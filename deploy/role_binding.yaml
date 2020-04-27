@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ham-deployable-operator
+  labels:
+    app.kubernetes.io/instance: ham-deployable-operator
+    app.kubernetes.io/managed-by: ham-deployable-operator
+    app.kubernetes.io/name: hybridApplication
+subjects:
+- kind: ServiceAccount
+  name: ham-deployable-operator
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: ham-deployable-operator
+  apiGroup: rbac.authorization.k8s.io
