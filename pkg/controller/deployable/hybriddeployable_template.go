@@ -352,8 +352,8 @@ func (r *ReconcileHybridDeployable) genObjectIdentifier(metaobj metav1.Object) t
 	}
 
 	annotations := metaobj.GetAnnotations()
-	if annotations != nil && (annotations[corev1alpha1.HostingHybridDeployable] != "" || annotations[corev1alpha1.HostingDeployer] != "") {
-		id.Name = annotations[corev1alpha1.HostingHybridDeployable] + "-" + annotations[corev1alpha1.HostingDeployer] + "-"
+	if annotations != nil && (annotations[corev1alpha1.HostingHybridDeployablePrefix+string(metaobj.GetUID())] != "" || annotations[corev1alpha1.HostingDeployer] != "") {
+		id.Name = annotations[corev1alpha1.HostingHybridDeployablePrefix+string(metaobj.GetUID())] + "-" + annotations[corev1alpha1.HostingDeployer] + "-"
 	}
 
 	if metaobj.GetGenerateName() != "" {
@@ -371,7 +371,7 @@ func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.D
 		labels = make(map[string]string)
 	}
 
-	labels[corev1alpha1.HostingHybridDeployable] = instance.Name
+	labels[corev1alpha1.HostingHybridDeployablePrefix+string(instance.UID)] = instance.Name
 	labels[corev1alpha1.ControlledBy] = corev1alpha1.HybridDeployableController
 
 	object.SetLabels(labels)
@@ -381,7 +381,7 @@ func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.D
 		annotations = make(map[string]string)
 	}
 
-	annotations[corev1alpha1.HostingHybridDeployable] = types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}.String()
+	annotations[corev1alpha1.HostingHybridDeployablePrefix+string(instance.UID)] = types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}.String()
 
 	object.SetAnnotations(annotations)
 }

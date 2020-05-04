@@ -9,7 +9,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: ham-deployable-operator
-  namespace: default
+  namespace: ham
 roleRef:
   kind: ClusterRole
   name: ham-deployable-operator

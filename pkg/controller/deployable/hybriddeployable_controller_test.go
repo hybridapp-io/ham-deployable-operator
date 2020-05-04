@@ -428,7 +428,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	keylabel := map[string]string{
-		appv1alpha1.HostingHybridDeployable: instance.Name,
+		appv1alpha1.HostingHybridDeployablePrefix + string(instance.UID): instance.Name,
 	}
 	dpls := &dplv1.DeployableList{}
 	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())

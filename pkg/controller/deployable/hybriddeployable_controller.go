@@ -437,7 +437,7 @@ func (r *ReconcileHybridDeployable) Reconcile(request reconcile.Request) (reconc
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			children, err := r.getChildren(request.NamespacedName)
+			children, err := r.getChildren(instance, request.NamespacedName)
 			if err == nil {
 				r.purgeChildren(children)
 			}
@@ -454,7 +454,7 @@ func (r *ReconcileHybridDeployable) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	children, err := r.getChildren(request.NamespacedName)
+	children, err := r.getChildren(instance, request.NamespacedName)
 	if err != nil {
 		klog.Error("Failed to get existing objects for hybriddeployable with error:", err)
 	}

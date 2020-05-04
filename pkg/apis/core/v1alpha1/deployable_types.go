@@ -25,12 +25,12 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 var (
-	HostingHybridDeployable    = SchemeGroupVersion.Group + "/hosting-hybriddeployable"
-	ControlledBy               = SchemeGroupVersion.Group + "controlled-by"
-	OutputOf                   = SchemeGroupVersion.Group + "output-of"
-	DependencyFrom             = SchemeGroupVersion.Group + "dependency-from"
-	HybridDeployableController = "hybriddeployable"
-	DefaultDeployerType        = "kubernetes"
+	HostingHybridDeployablePrefix = SchemeGroupVersion.Group + "/hosting-hybriddeployable-"
+	ControlledBy                  = SchemeGroupVersion.Group + "controlled-by"
+	OutputOf                      = SchemeGroupVersion.Group + "output-of"
+	DependencyFrom                = SchemeGroupVersion.Group + "dependency-from"
+	HybridDeployableController    = "hybriddeployable"
+	DefaultDeployerType           = "kubernetes"
 )
 
 type HybridTemplate struct {
