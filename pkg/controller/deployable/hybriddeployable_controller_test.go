@@ -428,7 +428,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	keylabel := map[string]string{
-		corev1alpha1.HostingHybridDeployablePrefix + string(instance.UID): instance.Name,
+		corev1alpha1.HostingHybridDeployablePrefix + instance.Namespace + "-" + instance.Name: instance.Name,
 	}
 	dpls := &dplv1.DeployableList{}
 	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
