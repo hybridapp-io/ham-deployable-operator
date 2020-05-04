@@ -189,7 +189,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 	children := make(map[schema.GroupVersionResource]gvrChildrenMap)
 
 	nameLabel := map[string]string{
-		corev1alpha1.HostingHybridDeployable: request.Name,
+		corev1alpha1.HostingHybridDeployablePrefix + request.Namespace + "-" + request.Name: request.Name,
 	}
 
 	for gvr := range r.activeGVRMap {
@@ -208,7 +208,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 				continue
 			}
 
-			if host, ok := annotations[corev1alpha1.HostingHybridDeployable]; ok {
+			if host, ok := annotations[corev1alpha1.HostingHybridDeployablePrefix+request.Namespace+"-"+request.Name]; ok {
 				if host == request.String() {
 					key := r.genObjectIdentifier(&obj)
 
