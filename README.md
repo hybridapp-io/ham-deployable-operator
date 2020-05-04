@@ -1,9 +1,9 @@
 # Deployable Operator
 
-[![Build](http://prow.purple-chesterfield.com/badge.svg?jobs=images-ham-deployable-operator-amd64-postsubmit)](http://prow.purple-chesterfield.com/?job=images-ham-deployable-operator-amd64-postsubmit)
-[![GoDoc](https://godoc.org/github.com/IBM/hybriddeploayble-operator?status.svg)](https://godoc.org/github.com/IBM/ham-deployable-operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/IBM/ham-deployable-operator)](https://goreportcard.com/report/github.com/IBM/ham-deployable-operator)
-[![Code Coverage](https://codecov.io/gh/IBM/ham-deployable-operator/branch/master/graphs/badge.svg?branch=master)](https://codecov.io/gh/IBM/ham-deployable-operator?branch=master)
+[![Build](http://prow.purple-chesterfield.com/badge.svg?jobs=multiarch-image-ham-deployable-operator-postsubmit)](http://prow.purple-chesterfield.com/?job=multiarch-image-ham-deployable-operator-postsubmit)
+[![GoDoc](https://godoc.org/github.com/hybridapp-io/hybriddeploayble-operator?status.svg)](https://godoc.org/github.com/hybridapp-io/ham-deployable-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hybridapp-io/ham-deployable-operator)](https://goreportcard.com/report/github.com/hybridapp-io/ham-deployable-operator)
+[![Code Coverage](https://codecov.io/gh/hybridapp-io/ham-deployable-operator/branch/master/graphs/badge.svg?branch=master)](https://codecov.io/gh/hybridapp-io/ham-deployable-operator?branch=master)
 [![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Container](https://quay.io/repository/multicloudlab/hybriddeployable-operator/status)](https://quay.io/repository/multicloudlab/hybriddeployable-operator?tab=tags)
 
