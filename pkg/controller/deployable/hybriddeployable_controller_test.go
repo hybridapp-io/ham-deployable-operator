@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
+	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
@@ -63,13 +63,13 @@ var (
 
 	deployerType = "configmap"
 
-	deployer = &corev1alpha1.Deployer{
+	deployer = &appv1alpha1.Deployer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deployerKey.Name,
 			Namespace: deployerKey.Namespace,
 			Labels:    map[string]string{"deployer-type": deployerType},
 		},
-		Spec: corev1alpha1.DeployerSpec{
+		Spec: appv1alpha1.DeployerSpec{
 			Type: deployerType,
 		},
 	}
@@ -79,20 +79,20 @@ var (
 		Namespace: clusterNamespace,
 	}
 
-	deployerInSetSpec = corev1alpha1.DeployerSpecDescriptor{
+	deployerInSetSpec = appv1alpha1.DeployerSpecDescriptor{
 		Key: "default/mydplyr",
-		Spec: corev1alpha1.DeployerSpec{
+		Spec: appv1alpha1.DeployerSpec{
 			Type: deployerType,
 		},
 	}
 
-	deployerSet = &corev1alpha1.DeployerSet{
+	deployerSet = &appv1alpha1.DeployerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
 			Namespace: deployerSetKey.Namespace,
 		},
-		Spec: corev1alpha1.DeployerSetSpec{
-			Deployers: []corev1alpha1.DeployerSpecDescriptor{
+		Spec: appv1alpha1.DeployerSetSpec{
+			Deployers: []appv1alpha1.DeployerSpecDescriptor{
 				deployerInSetSpec,
 			},
 		},
@@ -148,12 +148,12 @@ var (
 		Namespace: hybridDeployableNamespace,
 	}
 
-	hybridDeployable = &corev1alpha1.Deployable{
+	hybridDeployable = &appv1alpha1.Deployable{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hybridDeployableName,
 			Namespace: hybridDeployableNamespace,
 		},
-		Spec: corev1alpha1.DeployableSpec{},
+		Spec: appv1alpha1.DeployableSpec{},
 	}
 
 	expectedRequest = reconcile.Request{NamespacedName: hybridDeployableKey}
@@ -164,7 +164,7 @@ const oneitem = 1
 func TestReconcileWithDeployer(t *testing.T) {
 	g := NewWithT(t)
 
-	templateInHybridDeployable := corev1alpha1.HybridTemplate{
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
 		DeployerType: deployerType,
 		Template: &runtime.RawExtension{
 			Object: payloadFoo,
@@ -176,11 +176,11 @@ func TestReconcileWithDeployer(t *testing.T) {
 		Namespace: deployerKey.Namespace,
 	}
 
-	hybridDeployable.Spec = corev1alpha1.DeployableSpec{
-		HybridTemplates: []corev1alpha1.HybridTemplate{
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
 			templateInHybridDeployable,
 		},
-		Placement: &corev1alpha1.HybridPlacement{
+		Placement: &appv1alpha1.HybridPlacement{
 			Deployers: []corev1.ObjectReference{
 				deployerInPlacement,
 			},
@@ -237,7 +237,7 @@ func TestReconcileWithDeployer(t *testing.T) {
 func TestUpdateObjectChild(t *testing.T) {
 	g := NewWithT(t)
 
-	templateInHybridDeployable := corev1alpha1.HybridTemplate{
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
 		DeployerType: deployerType,
 		Template: &runtime.RawExtension{
 			Object: payloadFoo,
@@ -249,11 +249,11 @@ func TestUpdateObjectChild(t *testing.T) {
 		Namespace: deployerKey.Namespace,
 	}
 
-	hybridDeployable.Spec = corev1alpha1.DeployableSpec{
-		HybridTemplates: []corev1alpha1.HybridTemplate{
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
 			templateInHybridDeployable,
 		},
-		Placement: &corev1alpha1.HybridPlacement{
+		Placement: &appv1alpha1.HybridPlacement{
 			Deployers: []corev1.ObjectReference{
 				deployerInPlacement,
 			},
@@ -302,7 +302,7 @@ func TestUpdateObjectChild(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	//Expect payload is updated on hybriddeployable template update
-	instance = &corev1alpha1.Deployable{}
+	instance = &appv1alpha1.Deployable{}
 	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
 
 	// update the paylod spec and labels/annotations
@@ -343,18 +343,18 @@ func TestUpdateObjectChild(t *testing.T) {
 func TestUpdateDeployableChild(t *testing.T) {
 	g := NewWithT(t)
 
-	templateInHybridDeployable := corev1alpha1.HybridTemplate{
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
 		DeployerType: deployerType,
 		Template: &runtime.RawExtension{
 			Object: payloadFoo,
 		},
 	}
 
-	hybridDeployable.Spec = corev1alpha1.DeployableSpec{
-		HybridTemplates: []corev1alpha1.HybridTemplate{
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
 			templateInHybridDeployable,
 		},
-		Placement: &corev1alpha1.HybridPlacement{
+		Placement: &appv1alpha1.HybridPlacement{
 			PlacementRef: &corev1.ObjectReference{
 				Name:      placementRuleName,
 				Namespace: placementRuleNamespace,
@@ -428,7 +428,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	keylabel := map[string]string{
-		corev1alpha1.HostingHybridDeployablePrefix + instance.Namespace + "-" + instance.Name: instance.Name,
+		appv1alpha1.HostingHybridDeployable: instance.Name,
 	}
 	dpls := &dplv1.DeployableList{}
 	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
@@ -438,7 +438,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	//Expect payload is updated on hybriddeployable template update
-	instance = &corev1alpha1.Deployable{}
+	instance = &appv1alpha1.Deployable{}
 	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
 
 	instance.Spec.HybridTemplates[0].Template = &runtime.RawExtension{Object: payloadBar}
@@ -458,18 +458,18 @@ func TestUpdateDeployableChild(t *testing.T) {
 func TestReconcileWithDeployerLabel(t *testing.T) {
 	g := NewWithT(t)
 
-	templateInHybridDeployable := corev1alpha1.HybridTemplate{
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
 		DeployerType: deployerType,
 		Template: &runtime.RawExtension{
 			Object: payloadFoo,
 		},
 	}
 
-	hybridDeployable.Spec = corev1alpha1.DeployableSpec{
-		HybridTemplates: []corev1alpha1.HybridTemplate{
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
 			templateInHybridDeployable,
 		},
-		Placement: &corev1alpha1.HybridPlacement{
+		Placement: &appv1alpha1.HybridPlacement{
 			DeployerLabels: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"deployer-type": deployerType},
 			},
@@ -519,7 +519,7 @@ func TestReconcileWithDeployerLabel(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	//Expect payload is updated on hybriddeployable template update
-	instance = &corev1alpha1.Deployable{}
+	instance = &appv1alpha1.Deployable{}
 	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
 	instance.Spec.HybridTemplates[0].Template = &runtime.RawExtension{Object: payloadBar}
 
@@ -545,18 +545,18 @@ func TestReconcileWithDeployerLabel(t *testing.T) {
 func TestReconcileWithPlacementRule(t *testing.T) {
 	g := NewWithT(t)
 
-	templateInHybridDeployable := corev1alpha1.HybridTemplate{
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
 		DeployerType: deployerType,
 		Template: &runtime.RawExtension{
 			Object: payloadFoo,
 		},
 	}
 
-	hybridDeployable.Spec = corev1alpha1.DeployableSpec{
-		HybridTemplates: []corev1alpha1.HybridTemplate{
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
 			templateInHybridDeployable,
 		},
-		Placement: &corev1alpha1.HybridPlacement{
+		Placement: &appv1alpha1.HybridPlacement{
 			PlacementRef: &corev1.ObjectReference{
 				Name:      placementRuleName,
 				Namespace: placementRuleNamespace,
@@ -636,7 +636,7 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	//Expect deployble is updated on hybriddeployable template update
-	instance = &corev1alpha1.Deployable{}
+	instance = &appv1alpha1.Deployable{}
 	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
 	instance.Spec.HybridTemplates[0].Template = &runtime.RawExtension{Object: payloadBar}
 	g.Expect(c.Update(context.TODO(), instance)).To(Succeed())
