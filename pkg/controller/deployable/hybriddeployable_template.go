@@ -16,6 +16,7 @@ package deployable
 
 import (
 	"encoding/json"
+	"reflect"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -238,9 +239,14 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(templateobj *unstruc
 
 	// handle the deployable
 	if gvr == deployableGVR {
-		if err = unstructured.SetNestedMap(obj.Object, templateobj.Object, "spec", "template"); err != nil {
-			klog.Error("Failed to update object ", obj.GetNamespace()+"/"+obj.GetName(), " with error: ", err)
-			return obj, err
+		if currentTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
+			if reflect.DeepEqual(currentTemplate, templateobj.Object) {
+				return object, nil
+			}
+			if err = unstructured.SetNestedMap(obj.Object, templateobj.Object, "spec", "template"); err != nil {
+				klog.Error("Failed to update object ", obj.GetNamespace()+"/"+obj.GetName(), " with error: ", err)
+				return object, err
+			}
 		}
 	} else {
 		// use the existing object as a base and copy only the labels, annotations and spec from the template object
