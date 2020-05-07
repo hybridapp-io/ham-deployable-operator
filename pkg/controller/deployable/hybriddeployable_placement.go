@@ -265,7 +265,7 @@ func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev
 	err := r.Get(context.TODO(), pkey, pp)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			klog.Warning("Failed to locate placement reference", instance.Spec.Placement.PlacementRef)
+			klog.Warning("Failed to locate placement reference ", pref.Namespace+"/"+pref.Name)
 
 			return nil, nil
 		}
