@@ -1,10 +1,9 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 LABEL   name="quay.io/hybridappio/ham-deployable-operator" \
-        vendor="IBM" \
+        vendor="hybridapp.io" \
         summary="Hybrid Application Model - Deployable Operator" \
         description="Handles deployable components running on non-kubernetes platform(s)."
-
 
 ENV OPERATOR=/usr/local/bin/ham-deployable-operator \
     USER_UID=1001 \
@@ -19,7 +18,6 @@ RUN  /usr/local/bin/user_setup
 # copy licenses
 RUN mkdir /licenses
 COPY LICENSE /licenses
-
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
