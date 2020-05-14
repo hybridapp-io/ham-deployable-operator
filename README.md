@@ -41,7 +41,7 @@ Check the [CONTRIBUTING Doc](CONTRIBUTING.md) for how to contribute to the repo.
 
 - git v2.18+
 - Go v1.13.4+
-- operator-sdk v0.15.1
+- operator-sdk v0.17.0
 - Kubernetes v1.14+
 - kubectl v1.14+
 
@@ -73,16 +73,13 @@ $ docker push quay.io/johndoe/ham-deployable-operator:v0.1.0
 Register the CRD.
 
 ```shell
-$ kubectl create -f deploy/crds/app.cp4mcm.ibm.com_hybriddeployables_crd.yaml
+$ kubectl create -f deploy/crds
 ```
 
 Setup RBAC and deploy.
 
 ```shell
-$ kubectl create -f deploy/service_account.yaml
-$ kubectl create -f deploy/role.yaml
-$ kubectl create -f deploy/role_binding.yaml
-$ kubectl create -f deploy/operator.yaml
+$ kubectl create -f deploy
 ```
 
 Verify ham-deployable-operator is up and running.
@@ -96,12 +93,11 @@ ham-deployable-operator   1/1     1            1           2m20s
 Create the sample CR.
 
 ```shell
-$ kubectl create -f deploy/crds/app.cp4mcm.ibm.com_hybriddeployables_cr.yaml
-NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
-ham-deployable-operator   1/1     1            1           2m20s
-$ kubectl get hybriddeployables
-NAME     AGE
-simple   11s
+$ kubectl create -f kubectl apply -f examples/simple/simple_deployable_cr.yaml
+eployable.core.hybridapp.io/example-deployable created
+$kubectl get hdpl
+NAME                 AGE
+example-deployable   17s
 ```
 
 #### Uninstall Deployable Operator

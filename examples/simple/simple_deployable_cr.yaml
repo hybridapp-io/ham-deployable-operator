@@ -1,0 +1,62 @@
+apiVersion: core.hybridapp.io/v1alpha1
+kind: Deployable
+metadata:
+  name: example-deployable
+spec:
+  hybridtemplates:
+  - deployerType: kubernetes
+    template:
+      apiVersion: apps/v1
+      kind: Deployment
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: nginx
+        template:
+          metadata:
+            labels:
+              app: nginx
+          spec:
+            containers:
+            - name: nginx
+              image: nginx:1.7.9
+              ports:
+              - containerPort: 80
+  - deployerType: kubevirt
+    template:
+      apiVersion: kubevirt.io/v1alpha3
+      kind: VirtualMachine
+      spec:
+        running: false
+        template:
+          metadata:
+            labels: 
+              kubevirt.io/size: small
+              kubevirt.io/domain: testvm
+          spec:
+            domain:
+              devices:
+                disks:
+                - disk:
+                    bus: virtio
+                  name: rootfs
+                - disk:
+                    bus: virtio
+                  name: cloudinit
+                interfaces:
+                - name: default
+                  masquerade: {}
+              resources:
+                requests:
+                  memory: 64M
+            networks:
+            - name: default
+              pod: {}
+            volumes:
+              - name: rootfs
+                containerDisk:
+                  image: kubevirt/cirros-registry-disk-demo
+              - name: cloudinit
+                cloudInitNoCloud:
+                  userDataBase64: SGkuXG4= 
