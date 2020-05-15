@@ -15,8 +15,10 @@
 package deployable
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -111,7 +113,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 
 	err := json.Unmarshal(template.Raw, obj)
 	if err != nil {
-		klog.Info("Failed to unmashal object:\n", string(template.Raw))
+		klog.Info("Failed to unmarshal object:\n", string(template.Raw))
 		return err
 	}
 
@@ -191,9 +193,9 @@ func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alph
 	klog.V(packageDetailLogLevel).Info("Processing Deployable for deployer type ", deployer.Spec.Type, ": ", templateobj)
 
 	if object != nil {
-		klog.V(packageDetailLogLevel).Info("Updating Object for Object:", object.GetNamespace(), "/", object.GetName())
+		klog.V(packageDetailLogLevel).Info("Updating object:", object.GetNamespace(), "/", object.GetName())
 
-		object, err = r.updateObjectForDeployer(templateobj, object)
+		object, err = r.updateObjectForDeployer(instance, deployer, templateobj, object)
 		if err != nil {
 			klog.Error("Failed to update object with error: ", err)
 			return nil, err
@@ -220,7 +222,9 @@ func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alph
 	return object, err
 }
 
-func (r *ReconcileHybridDeployable) updateObjectForDeployer(templateobj *unstructured.Unstructured, object metav1.Object) (metav1.Object, error) {
+func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer,
+	templateobj *unstructured.Unstructured, object metav1.Object) (metav1.Object, error) {
+
 	uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
 	if err != nil {
 		klog.Error("Failed to convert deployable to unstructured with error:", err)
@@ -237,15 +241,58 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(templateobj *unstruc
 		return nil, err
 	}
 
-	// handle the deployable
+	// handle the deployable if not controlled by discovery (remote reconciler)
 	if gvr == deployableGVR {
-		if currentTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
-			if reflect.DeepEqual(currentTemplate, templateobj.Object) {
-				return object, nil
-			}
-			if err = unstructured.SetNestedMap(obj.Object, templateobj.Object, "spec", "template"); err != nil {
-				klog.Error("Failed to update object ", obj.GetNamespace()+"/"+obj.GetName(), " with error: ", err)
-				return object, err
+		if !r.isDiscoveryEnabled(obj) {
+			if r.isDiscoveryCompleted(obj) {
+				// assume ownership of the deployable
+				objAnnotations := obj.GetAnnotations()
+				delete(objAnnotations, corev1alpha1.AnnotationHybridDiscovery)
+				obj.SetAnnotations(objAnnotations)
+
+				// update the instance template and remove the discovery annotation
+				instanceAnnotations := instance.GetAnnotations()
+				delete(instanceAnnotations, corev1alpha1.AnnotationHybridDiscovery)
+				instance.SetAnnotations(instanceAnnotations)
+
+				for index, hybridTemplate := range instance.Spec.HybridTemplates {
+					if hybridTemplate.DeployerType == deployer.Spec.Type {
+
+						if dplTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
+							uc := &unstructured.Unstructured{}
+							uc.SetUnstructuredContent(dplTemplate)
+							hybridTemplate.Template = &runtime.RawExtension{
+								Object: uc,
+							}
+							instance.Spec.HybridTemplates[index] = *hybridTemplate.DeepCopy()
+						}
+
+						//update the deployable
+						if obj, err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(obj, metav1.UpdateOptions{}); err != nil {
+							klog.Error("Failed to update the deployable ", obj.GetNamespace()+"/"+obj.GetName())
+							return nil, err
+						}
+						klog.V(packageInfoLogLevel).Info("Successfully removed the discovery annotation from deployable ",
+							obj.GetNamespace()+"/"+obj.GetName())
+						// update the hybrid deployable
+						if err = r.Update(context.TODO(), instance); err != nil {
+							klog.Error("Failed to update the hybrid deployable ", instance.GetNamespace()+"/"+instance.GetName())
+							return nil, err
+						}
+						klog.V(packageInfoLogLevel).Info("Successfully updated the spec template for hybrid deployable ",
+							instance.GetNamespace()+"/"+instance.GetName())
+						return obj, nil
+					}
+				}
+			} else if currentTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
+				if reflect.DeepEqual(currentTemplate, templateobj.Object) {
+					return object, nil
+				}
+				if err = unstructured.SetNestedMap(obj.Object, templateobj.Object, "spec", "template"); err != nil {
+					klog.Error("Failed to update object ", obj.GetNamespace()+"/"+obj.GetName(), " with error: ", err)
+					return object, err
+				}
+				klog.V(packageInfoLogLevel).Info("Successfully updated the spec template for deployable ", obj.GetNamespace()+"/"+obj.GetName())
 			}
 		}
 	} else {
@@ -337,7 +384,7 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	}
 
 	if obj.GetName() == "" {
-		obj.SetGenerateName(r.genDeployableGenerateName(instance, deployer))
+		obj.SetGenerateName(r.genDeployableGenerateName(templateobj))
 	}
 
 	obj.SetNamespace(deployer.Namespace)
@@ -348,8 +395,8 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	return r.dynamicClient.Resource(gvr).Namespace(deployer.Namespace).Create(obj, metav1.CreateOptions{})
 }
 
-func (r *ReconcileHybridDeployable) genDeployableGenerateName(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer) string {
-	return instance.Name + "-" + deployer.Spec.Type + "-"
+func (r *ReconcileHybridDeployable) genDeployableGenerateName(obj *unstructured.Unstructured) string {
+	return strings.ToLower(obj.GetKind()+"-"+obj.GetNamespace()+"-"+obj.GetName()) + "-"
 }
 
 func (r *ReconcileHybridDeployable) genObjectIdentifier(metaobj metav1.Object) types.NamespacedName {
@@ -359,7 +406,7 @@ func (r *ReconcileHybridDeployable) genObjectIdentifier(metaobj metav1.Object) t
 
 	annotations := metaobj.GetAnnotations()
 	if annotations != nil && (annotations[corev1alpha1.HostingHybridDeployable] != "" || annotations[corev1alpha1.HostingDeployer] != "") {
-		id.Name = annotations[corev1alpha1.HostingHybridDeployable] + "-" + annotations[corev1alpha1.HostingDeployer] + "-"
+		id.Name = annotations[corev1alpha1.HostingHybridDeployable] + "-"
 	}
 
 	if metaobj.GetGenerateName() != "" {
@@ -389,5 +436,27 @@ func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.D
 
 	annotations[corev1alpha1.HostingHybridDeployable] = types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}.String()
 
+	// add the hybrid-discovery if enabled
+	if hybridDiscovery, enabled := instance.GetAnnotations()[corev1alpha1.AnnotationHybridDiscovery]; enabled {
+		annotations[corev1alpha1.AnnotationHybridDiscovery] = hybridDiscovery
+	}
 	object.SetAnnotations(annotations)
+}
+
+func (r *ReconcileHybridDeployable) isDiscoveryEnabled(obj *unstructured.Unstructured) bool {
+	if _, enabled := obj.GetAnnotations()[corev1alpha1.AnnotationHybridDiscovery]; !enabled ||
+		obj.GetAnnotations()[corev1alpha1.AnnotationHybridDiscovery] != corev1alpha1.HybridDiscoveryEnabled {
+		return false
+	}
+
+	return true
+}
+
+func (r *ReconcileHybridDeployable) isDiscoveryCompleted(obj *unstructured.Unstructured) bool {
+	if _, enabled := obj.GetAnnotations()[corev1alpha1.AnnotationHybridDiscovery]; !enabled ||
+		obj.GetAnnotations()[corev1alpha1.AnnotationHybridDiscovery] != corev1alpha1.HybridDiscoveryCompleted {
+		return false
+	}
+
+	return true
 }

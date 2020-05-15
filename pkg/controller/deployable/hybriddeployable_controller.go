@@ -152,6 +152,54 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// watch on hybrid-discovery annotation of deployables
+	err = c.Watch(
+		&source.Kind{
+			Type: &dplv1.Deployable{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: &deployableMapper{mgr.GetClient()},
+		},
+		predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				newDeployable := e.ObjectNew.(*dplv1.Deployable)
+				oldDeployable := e.ObjectOld.(*dplv1.Deployable)
+				// discovery annotation = completed on new
+				if _, completedNew := newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
+					newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
+					// discovery annotation != completed on old
+					if _, completedOld := oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; !completedOld ||
+						oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] != appv1alpha1.HybridDiscoveryCompleted {
+						// hosted deployable
+						if _, hostedNew := newDeployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
+							return true
+						}
+					}
+				}
+				return false
+			},
+			CreateFunc: func(e event.CreateEvent) bool {
+				deployable := e.Object.(*dplv1.Deployable)
+				if _, completedNew := deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
+					deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
+					// hosted deployable
+					if _, hostedNew := deployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
+						return true
+					}
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+			GenericFunc: func(e event.GenericEvent) bool {
+				return false
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
 	err = c.Watch(
 		&source.Kind{
 			Type: &dplv1.Deployable{}},
@@ -380,6 +428,24 @@ func (mapper *deployerMapper) Map(obj handler.MapObject) []reconcile.Request {
 		requests = append(requests, reconcile.Request{NamespacedName: objkey})
 	}
 
+	return requests
+}
+
+type deployableMapper struct {
+	client.Client
+}
+
+func (mapper *deployableMapper) Map(obj handler.MapObject) []reconcile.Request {
+	var requests []reconcile.Request
+
+	if hdpl, ok := obj.Meta.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; ok {
+		if len(strings.Split(hdpl, "/")) == 2 {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: strings.Split(hdpl, "/")[0],
+					Name:      strings.Split(hdpl, "/")[1]}})
+		}
+	}
 	return requests
 }
 
