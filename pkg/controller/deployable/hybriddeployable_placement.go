@@ -198,7 +198,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 			return nil, err
 		}
 
-		klog.V(packageDetailLogLevel).Info("Processing active gvr", gvr, "and got list:", objlist.Items)
+		klog.V(packageDetailLogLevel).Info("Processing active gvr ", gvr, " and got list: ", objlist.Items)
 
 		gvkchildren := make(map[types.NamespacedName]metav1.Object)
 
