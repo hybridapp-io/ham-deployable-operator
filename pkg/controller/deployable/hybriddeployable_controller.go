@@ -446,6 +446,7 @@ func (mapper *deployableMapper) Map(obj handler.MapObject) []reconcile.Request {
 					Name:      strings.Split(hdpl, "/")[1]}})
 		}
 	}
+
 	return requests
 }
 

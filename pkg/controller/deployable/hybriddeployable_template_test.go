@@ -223,6 +223,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 	// empty hdpl
 	instance := hybridDeployable.DeepCopy()
 	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
+
 	defer c.Delete(context.TODO(), instance)
 
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
@@ -380,6 +381,7 @@ func TestUpdateDiscoveryCompleted(t *testing.T) {
 	//Expect payload is updated on hybriddeployable template update
 	instance = &appv1alpha1.Deployable{}
 	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
+
 	uc := &unstructured.Unstructured{}
 	json.Unmarshal(instance.Spec.HybridTemplates[0].Template.Raw, uc)
 	payload, _, _ := unstructured.NestedMap(uc.Object, "data")
