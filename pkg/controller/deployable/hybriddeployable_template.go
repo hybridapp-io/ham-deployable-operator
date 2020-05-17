@@ -64,8 +64,9 @@ func (r *ReconcileHybridDeployable) purgeChildren(children map[schema.GroupVersi
 
 			err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 			rtobj := obj.(runtime.Object)
-			r.eventRecorder.RecordEvent(obj.(runtime.Object), "Delete", "Delete Object "+
-				rtobj.GetObjectKind().GroupVersionKind().String()+" "+obj.GetNamespace()+"/"+obj.GetName(), err)
+			r.eventRecorder.RecordEvent(obj.(runtime.Object), "Delete",
+				"Hybrid Deployable delete resource "+
+					rtobj.GetObjectKind().GroupVersionKind().String()+" "+obj.GetNamespace()+"/"+obj.GetName(), err)
 
 			if err != nil {
 				klog.Error("Failed to delete obsolete child for key:", k, "with error:", err)
@@ -202,8 +203,9 @@ func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alph
 		}
 
 		rtobj := object.(runtime.Object)
-		r.eventRecorder.RecordEvent(object.(runtime.Object), "Update", "Update Object "+
-			rtobj.GetObjectKind().GroupVersionKind().String()+" "+object.GetNamespace()+"/"+object.GetName(), err)
+		r.eventRecorder.RecordEvent(object.(runtime.Object), "Update",
+			"Hybrid Deploybale update resource "+
+				rtobj.GetObjectKind().GroupVersionKind().String()+" "+object.GetNamespace()+"/"+object.GetName(), err)
 	} else {
 		object, err = r.createObjectForDeployer(instance, deployer, templateobj)
 		if err != nil {
@@ -211,8 +213,9 @@ func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alph
 			return nil, err
 		}
 		rtobj := object.(runtime.Object)
-		r.eventRecorder.RecordEvent(object.(runtime.Object), "Create", "Create Object "+
-			rtobj.GetObjectKind().GroupVersionKind().String()+" "+object.GetNamespace()+"/"+object.GetName(), err)
+		r.eventRecorder.RecordEvent(object.(runtime.Object), "Create",
+			"Hybrid Deployable create resource "+
+				rtobj.GetObjectKind().GroupVersionKind().String()+" "+object.GetNamespace()+"/"+object.GetName(), err)
 	}
 
 	if err != nil {
@@ -224,7 +227,6 @@ func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alph
 
 func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer,
 	templateobj *unstructured.Unstructured, object metav1.Object) (metav1.Object, error) {
-
 	uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
 	if err != nil {
 		klog.Error("Failed to convert deployable to unstructured with error:", err)
@@ -257,10 +259,10 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 
 				for index, hybridTemplate := range instance.Spec.HybridTemplates {
 					if hybridTemplate.DeployerType == deployer.Spec.Type {
-
 						if dplTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
 							uc := &unstructured.Unstructured{}
 							uc.SetUnstructuredContent(dplTemplate)
+
 							hybridTemplate.Template = &runtime.RawExtension{
 								Object: uc,
 							}
@@ -272,6 +274,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 							klog.Error("Failed to update the deployable ", obj.GetNamespace()+"/"+obj.GetName())
 							return nil, err
 						}
+
 						klog.V(packageInfoLogLevel).Info("Successfully removed the discovery annotation from deployable ",
 							obj.GetNamespace()+"/"+obj.GetName())
 						// update the hybrid deployable
@@ -279,8 +282,10 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 							klog.Error("Failed to update the hybrid deployable ", instance.GetNamespace()+"/"+instance.GetName())
 							return nil, err
 						}
+
 						klog.V(packageInfoLogLevel).Info("Successfully updated the spec template for hybrid deployable ",
 							instance.GetNamespace()+"/"+instance.GetName())
+
 						return obj, nil
 					}
 				}
@@ -440,6 +445,7 @@ func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.D
 	if hybridDiscovery, enabled := instance.GetAnnotations()[corev1alpha1.AnnotationHybridDiscovery]; enabled {
 		annotations[corev1alpha1.AnnotationHybridDiscovery] = hybridDiscovery
 	}
+
 	object.SetAnnotations(annotations)
 }
 
