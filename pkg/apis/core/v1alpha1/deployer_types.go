@@ -25,7 +25,7 @@ var (
 	AnnotationHybridDiscovery = SchemeGroupVersion.Group + "/hybrid-discovery"
 
 	//AnnotationClusterScope indicates whether discovery should look for resources cluster wide rather then in a specific namespace
-	AnnotationClusterScope = SchemeGroupVersion.Group + "/hybrid-discover-clusterscoped"
+	AnnotationClusterScope = SchemeGroupVersion.Group + "/hybrid-discovery-clusterscoped"
 
 	SourceObject = SchemeGroupVersion.Group + "/source-object"
 
