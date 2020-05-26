@@ -39,11 +39,13 @@ var (
 		Version:  "v1",
 		Resource: "deployables",
 	}
+
 	deployableGVK = schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
 		Version: "v1",
 		Kind:    "Deployable",
 	}
+
 	hybriddeployableGVK = schema.GroupVersionKind{
 		Group:   corev1alpha1.SchemeGroupVersion.Group,
 		Version: corev1alpha1.SchemeGroupVersion.Version,
@@ -271,7 +273,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 
 						//update the deployable
 						if obj, err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(obj, metav1.UpdateOptions{}); err != nil {
-							klog.Error("Failed to update the deployable ", obj.GetNamespace()+"/"+obj.GetName())
+							klog.Error("Failed to update deployable ", object.GetNamespace()+"/"+object.GetName())
 							return nil, err
 						}
 

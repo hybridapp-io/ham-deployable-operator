@@ -34,6 +34,13 @@ import (
 var (
 	resync            = 10 * time.Minute
 	resourcePredicate = discovery.SupportsAllVerbs{Verbs: []string{"create", "update", "delete", "list", "watch"}}
+	ignoredGVRs       = []schema.GroupVersionResource{
+		{
+			Group:    "app.ibm.com",
+			Version:  "v1alpha1",
+			Resource: "deployables",
+		},
+	}
 )
 
 type hybridDeployableRegistry struct {
@@ -133,14 +140,23 @@ func (r *hybridDeployableRegistry) restart() {
 	r.dynamicFactory = dynamicinformer.NewDynamicSharedInformerFactory(r.dynamicClient, resync)
 
 	for gvr := range r.activeGVRMap {
-		r.dynamicFactory.ForResource(gvr).Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(new interface{}) {
-			},
-			UpdateFunc: func(old, new interface{}) {
-			},
-			DeleteFunc: func(old interface{}) {
-			},
-		})
+		var toBeIgnored = false
+		for _, ignoredGVR := range ignoredGVRs {
+			if gvr == ignoredGVR {
+				toBeIgnored = true
+				break
+			}
+		}
+		if !toBeIgnored {
+			r.dynamicFactory.ForResource(gvr).Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+				AddFunc: func(new interface{}) {
+				},
+				UpdateFunc: func(old, new interface{}) {
+				},
+				DeleteFunc: func(old interface{}) {
+				},
+			})
+		}
 	}
 
 	r.dynamicFactory.Start(r.stopCh)
