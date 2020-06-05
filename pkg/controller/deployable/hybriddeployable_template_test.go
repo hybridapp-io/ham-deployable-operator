@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,6 +34,139 @@ import (
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
+
+var (
+	fooDeployer = &appv1alpha1.Deployer{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Deployer",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "foo",
+			Namespace:   "default",
+			Annotations: map[string]string{appv1alpha1.DeployerInCluster: "true"},
+		},
+		Spec: appv1alpha1.DeployerSpec{
+			Type: "foo",
+		},
+	}
+)
+
+func TestCreateObjectChild(t *testing.T) {
+	g := NewWithT(t)
+
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
+		DeployerType: fooDeployer.Spec.Type,
+		Template: &runtime.RawExtension{
+			Object: payloadFoo,
+		},
+	}
+
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateInHybridDeployable,
+		},
+	}
+
+	var c client.Client
+
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = mgr.GetClient()
+
+	rec := newReconciler(mgr)
+	recFn, requests := SetupTestReconcile(rec)
+
+	g.Expect(add(mgr, recFn)).To(Succeed())
+
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	clusterScopeDeployer := fooDeployer.DeepCopy()
+	clusterScopeDeployer.Name = "cluster-" + fooDeployer.Name
+	clusterScopeDeployer.Spec.ClusterScope = true
+	clusterScopeDeployer.Spec.Capabilities = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"configmaps"},
+			Verbs:     []string{"*"},
+		},
+	}
+	g.Expect(c.Create(context.TODO(), clusterScopeDeployer)).NotTo(HaveOccurred())
+	defer c.Delete(context.TODO(), clusterScopeDeployer)
+
+	namespaceScopeDeployer := fooDeployer.DeepCopy()
+	namespaceScopeDeployer.Name = "namespace-" + fooDeployer.Name
+	namespaceScopeDeployer.Spec.ClusterScope = false
+	namespaceScopeDeployer.Spec.Capabilities = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"configmaps"},
+			Verbs:     []string{"*"},
+		},
+	}
+	g.Expect(c.Create(context.TODO(), namespaceScopeDeployer)).NotTo(HaveOccurred())
+	defer c.Delete(context.TODO(), namespaceScopeDeployer)
+
+	//Expect payload is created in payload namespace on hybriddeployable create
+	hdpl1 := hybridDeployable.DeepCopy()
+	hdpl1.SetName("cluster-" + hybridDeployable.Name)
+	hdpl1.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      clusterScopeDeployer.Name,
+				Namespace: clusterScopeDeployer.Namespace,
+			},
+		},
+	}
+
+	g.Expect(c.Create(context.TODO(), hdpl1)).To(Succeed())
+	defer c.Delete(context.TODO(), hdpl1)
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	pl1 := &corev1.ConfigMap{}
+	plKey1 := types.NamespacedName{
+		Name:      payloadFoo.Name,
+		Namespace: payloadFoo.Namespace,
+	}
+	g.Expect(c.Get(context.TODO(), plKey1, pl1)).To(Succeed())
+
+	//status update reconciliation
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	//Expect payload is created in payload namespace on hybriddeployable create
+	hdpl2 := hybridDeployable.DeepCopy()
+	hdpl1.SetName("namespace-" + hybridDeployable.Name)
+	hdpl2.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      namespaceScopeDeployer.Name,
+				Namespace: namespaceScopeDeployer.Namespace,
+			},
+		},
+	}
+
+	g.Expect(c.Create(context.TODO(), hdpl2)).To(Succeed())
+	defer c.Delete(context.TODO(), hdpl2)
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	pl2 := &corev1.ConfigMap{}
+	plKey2 := types.NamespacedName{
+		Name:      payloadFoo.Name,
+		Namespace: namespaceScopeDeployer.Namespace,
+	}
+	g.Expect(c.Get(context.TODO(), plKey2, pl2)).To(Succeed())
+
+	//status update reconciliation
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+}
 
 func TestUpdateObjectChild(t *testing.T) {
 	g := NewWithT(t)
