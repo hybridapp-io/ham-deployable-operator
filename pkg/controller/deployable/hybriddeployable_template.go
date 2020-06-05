@@ -141,7 +141,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 	var key types.NamespacedName
 
 	for k, child := range gvrchildren {
-		if child.GetNamespace() != deployer.GetNamespace() {
+		if !deployer.Spec.ClusterScope && child.GetNamespace() != deployer.GetNamespace() {
 			continue
 		}
 
@@ -394,12 +394,18 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 		obj.SetGenerateName(r.genDeployableGenerateName(templateobj))
 	}
 
-	obj.SetNamespace(deployer.Namespace)
+	var objNamespace string
+	if deployer.Spec.ClusterScope && templateobj.GetNamespace() != "" {
+		objNamespace = templateobj.GetNamespace()
+	} else {
+		objNamespace = deployer.Namespace
+	}
+	obj.SetNamespace(objNamespace)
 	r.prepareUnstructured(instance, obj)
 
 	klog.V(packageDetailLogLevel).Info("Creating Object:", obj)
 
-	return r.dynamicClient.Resource(gvr).Namespace(deployer.Namespace).Create(obj, metav1.CreateOptions{})
+	return r.dynamicClient.Resource(gvr).Namespace(objNamespace).Create(obj, metav1.CreateOptions{})
 }
 
 func (r *ReconcileHybridDeployable) genDeployableGenerateName(obj *unstructured.Unstructured) string {
