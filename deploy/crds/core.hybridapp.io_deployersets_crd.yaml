@@ -138,6 +138,23 @@ spec:
                             description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                             type: string
                         type: object
+                      placementTarget:
+                        description: GroupVersionResource unambiguously identifies
+                          a resource.  It doesn't anonymously include GroupVersion
+                          to avoid automatic coersion.  It doesn't use a GroupVersion
+                          to avoid custom marshalling
+                        properties:
+                          group:
+                            type: string
+                          resource:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - group
+                        - resource
+                        - version
+                        type: object
                       type:
                         description: 'Important: Run "operator-sdk generate k8s" to
                           regenerate code after modifying this file Add custom validation
