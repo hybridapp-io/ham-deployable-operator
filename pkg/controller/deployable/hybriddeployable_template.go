@@ -455,6 +455,10 @@ func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.D
 	}
 
 	object.SetAnnotations(annotations)
+
+	if object.GetNamespace() == "" {
+		object.SetNamespace(instance.Namespace)
+	}
 }
 
 func (r *ReconcileHybridDeployable) isDiscoveryEnabled(obj *unstructured.Unstructured) bool {
