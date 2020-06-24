@@ -44,20 +44,27 @@ const (
 	HybridDiscoveryCompleted = "completed"
 )
 
+var (
+	DefaultKubernetesPlacementTarget = &metav1.GroupVersionResource{
+		Group:    "clusterregistry.k8s.io",
+		Version:  "v1alpha1",
+		Resource: "clusters",
+	}
+)
+
 // DeployerSpec defines the desired state of Deployer
 type DeployerSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Type         string                  `json:"type"`
-	OperatorRef  *corev1.ObjectReference `json:"operatorRef,omitempty"`
-	Capabilities []rbacv1.PolicyRule     `json:"capabilities,omitempty"`
-	ClusterScope bool                    `json:"clusterScope,omitempty"`
+	Type            string                       `json:"type"`
+	PlacementTarget *metav1.GroupVersionResource `json:"placementTarget,omitempty"`
+	OperatorRef     *corev1.ObjectReference      `json:"operatorRef,omitempty"`
+	Capabilities    []rbacv1.PolicyRule          `json:"capabilities,omitempty"`
+	ClusterScope    bool                         `json:"clusterScope,omitempty"`
 }
 
 // DeployerStatus defines the observed state of Deployer
 type DeployerStatus struct {
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
