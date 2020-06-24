@@ -390,6 +390,119 @@ func TestUpdateDeployableChild(t *testing.T) {
 	g.Expect(payload["myconfig"].(string)).To(Equal(payloadBar.Data["myconfig"]))
 }
 
+func TestUpdateTemplateNamespace(t *testing.T) {
+	g := NewWithT(t)
+
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
+		DeployerType: deployerType,
+		Template: &runtime.RawExtension{
+			Object: payloadBar,
+		},
+	}
+
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateInHybridDeployable,
+		},
+		Placement: &appv1alpha1.HybridPlacement{
+			PlacementRef: &corev1.ObjectReference{
+				Name:      placementRuleName,
+				Namespace: placementRuleNamespace,
+			},
+		},
+	}
+
+	var c client.Client
+
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = mgr.GetClient()
+
+	rec := newReconciler(mgr)
+	recFn, requests := SetupTestReconcile(rec)
+
+	g.Expect(add(mgr, recFn)).To(Succeed())
+
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	prule := placementRule.DeepCopy()
+	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
+
+	defer c.Delete(context.TODO(), prule)
+
+	dplyr := deployer.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
+
+	defer c.Delete(context.TODO(), dplyr)
+
+	dset := deployerSet.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dset)).To(Succeed())
+
+	defer c.Delete(context.TODO(), dset)
+
+	clstr := cluster.DeepCopy()
+	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
+
+	defer c.Delete(context.TODO(), clstr)
+
+	//Pull back the placementrule and update the status subresource
+	pr := &placementv1.PlacementRule{}
+	g.Expect(c.Get(context.TODO(), placementRuleKey, pr)).To(Succeed())
+
+	decisionInPlacement := placementv1.PlacementDecision{
+		ClusterName:      clusterName,
+		ClusterNamespace: clusterNamespace,
+	}
+
+	newpd := []placementv1.PlacementDecision{
+		decisionInPlacement,
+	}
+	pr.Status.Decisions = newpd
+	g.Expect(c.Status().Update(context.TODO(), pr.DeepCopy())).To(Succeed())
+
+	defer c.Delete(context.TODO(), pr)
+
+	instance := hybridDeployable.DeepCopy()
+	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
+
+	defer c.Delete(context.TODO(), instance)
+
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
+
+	keylabel := map[string]string{
+		appv1alpha1.HostingHybridDeployable: instance.Name,
+	}
+	dpls := &dplv1.DeployableList{}
+	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	g.Expect(dpls.Items).To(HaveLen(oneitem))
+
+	uc := &unstructured.Unstructured{}
+	json.Unmarshal(dpls.Items[0].Spec.Template.Raw, uc)
+	g.Expect(uc.GetNamespace()).To(Equal(instance.Namespace))
+
+	//status update reconciliation
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
+
+	// update the payload to a namespaced one
+	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
+
+	instance.Spec.HybridTemplates[0].Template = &runtime.RawExtension{Object: payloadFoo}
+	g.Expect(c.Update(context.TODO(), instance)).To(Succeed())
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
+
+	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	json.Unmarshal(dpls.Items[0].Spec.Template.Raw, uc)
+	g.Expect(uc.GetNamespace()).To(Equal(payloadFoo.Namespace))
+}
+
 func TestUpdateDiscoveryCompleted(t *testing.T) {
 	g := NewWithT(t)
 
