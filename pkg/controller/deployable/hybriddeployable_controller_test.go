@@ -37,8 +37,8 @@ import (
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
-const timeout = time.Second * 30
-const interval = time.Second * 1
+const timeout = time.Second * 10
+const interval = time.Millisecond * 10
 
 var (
 	clusterName      = "cluster-1"

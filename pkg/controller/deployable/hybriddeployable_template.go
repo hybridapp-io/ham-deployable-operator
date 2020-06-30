@@ -59,11 +59,11 @@ func (r *ReconcileHybridDeployable) purgeChildren(children map[schema.GroupVersi
 	var err error
 
 	for gvr, gvrchildren := range children {
-		klog.V(packageDetailLogLevel).Info("Deleting obsolete children in gvr:", gvr)
+		klog.V(packageDetailLogLevel).Info("Deleting obsolete children in gvr: ", gvr)
 
 		for k, obj := range gvrchildren {
 			deletePolicy := metav1.DeletePropagationBackground
-
+			klog.Info("Deleting obsolete children ", obj.GetNamespace()+"/"+obj.GetName(), "in gvr: ", gvr)
 			err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 			rtobj := obj.(runtime.Object)
 			r.eventRecorder.RecordEvent(obj.(runtime.Object), "Delete",
@@ -71,7 +71,7 @@ func (r *ReconcileHybridDeployable) purgeChildren(children map[schema.GroupVersi
 					rtobj.GetObjectKind().GroupVersionKind().String()+" "+obj.GetNamespace()+"/"+obj.GetName(), err)
 
 			if err != nil {
-				klog.Error("Failed to delete obsolete child for key:", k, "with error:", err)
+				klog.Error("Failed to delete obsolete child for key: ", k, "with error: ", err)
 			}
 		}
 	}

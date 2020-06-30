@@ -26,9 +26,9 @@ import (
 
 var (
 	HostingHybridDeployable    = SchemeGroupVersion.Group + "/hosting-hybriddeployable"
-	ControlledBy               = SchemeGroupVersion.Group + "controlled-by"
-	OutputOf                   = SchemeGroupVersion.Group + "output-of"
-	DependencyFrom             = SchemeGroupVersion.Group + "dependency-from"
+	ControlledBy               = SchemeGroupVersion.Group + "/controlled-by"
+	OutputOf                   = SchemeGroupVersion.Group + "/output-of"
+	DependencyFrom             = SchemeGroupVersion.Group + "/dependency-from"
 	HybridDeployableController = "hybriddeployable"
 	DefaultDeployerType        = "kubernetes"
 )
