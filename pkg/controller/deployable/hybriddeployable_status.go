@@ -67,7 +67,7 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 
 		err = r.List(context.TODO(), cfgmaplist, listopt)
 		if err != nil {
-			klog.Info("Failed to list endpoints with error", err)
+			klog.Info("Failed to list configmaps with error", err)
 			return
 		}
 
@@ -83,7 +83,7 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 
 		err = r.List(context.TODO(), seclist, listopt)
 		if err != nil {
-			klog.Info("Failed to list endpoints with error", err)
+			klog.Info("Failed to list secrets with error", err)
 			return
 		}
 
@@ -98,7 +98,7 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		dpllist := &dplv1.DeployableList{}
 		err = r.List(context.TODO(), dpllist, listopt)
 		if err != nil {
-			klog.Info("Failed to list endpoints with error", err)
+			klog.Info("Failed to list deployables with error", err)
 			return
 		}
 

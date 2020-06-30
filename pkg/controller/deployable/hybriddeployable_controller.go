@@ -477,7 +477,6 @@ func (mapper *outputMapper) Map(obj handler.MapObject) []reconcile.Request {
 	}
 
 	requests = append(requests, reconcile.Request{NamespacedName: key})
-
 	return requests
 }
 
