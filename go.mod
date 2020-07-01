@@ -3,6 +3,7 @@ module github.com/hybridapp-io/ham-deployable-operator
 go 1.13
 
 require (
+	github.com/google/martian v2.1.0+incompatible
 	github.com/onsi/gomega v1.8.1
 	github.com/open-cluster-management/multicloud-operators-deployable v0.0.0-20200409001040-158722845851
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20200409002246-5a52c406aebc
