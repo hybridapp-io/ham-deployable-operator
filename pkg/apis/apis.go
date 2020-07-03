@@ -18,8 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	dplapis "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis"
-
-	clusterv1alpha1 "k8s.io/cluster-registry/pkg/apis/clusterregistry/v1alpha1"
 )
 
 // AddToSchemes may be used to add all resources defined in the project to a Scheme
@@ -27,12 +25,7 @@ var AddToSchemes runtime.SchemeBuilder
 
 // AddToScheme adds all Resources to the Scheme
 func AddToScheme(s *runtime.Scheme) error {
-	err := clusterv1alpha1.AddToScheme(s)
-	if err != nil {
-		return err
-	}
-
-	err = dplapis.AddToScheme(s)
+	err := dplapis.AddToScheme(s)
 	if err != nil {
 		return err
 	}

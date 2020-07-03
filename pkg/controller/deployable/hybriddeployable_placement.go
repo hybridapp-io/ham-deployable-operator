@@ -17,12 +17,12 @@ package deployable
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	clusterv1alpha1 "k8s.io/cluster-registry/pkg/apis/clusterregistry/v1alpha1"
 	"k8s.io/klog"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -145,7 +145,7 @@ func (r *ReconcileHybridDeployable) getDeployersByPlacementReference(instance *c
 		deployer.Spec.Type = corev1alpha1.DefaultDeployerType
 
 		err = r.Get(context.TODO(), key, dset)
-		klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", cl.GetNamespace(), "/", cl.GetName(), " with err:", err, " result: ", dset)
+		klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", cl.Namespace, "/", cl.Name, " with err:", err, " result: ", dset)
 
 		if err != nil {
 			if !errors.IsNotFound(err) {
@@ -233,7 +233,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 	return children, nil
 }
 
-func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev1alpha1.Deployable) (map[string]*clusterv1alpha1.Cluster, error) {
+func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev1alpha1.Deployable) (map[string]*corev1.ObjectReference, error) {
 	if instance == nil || instance.Spec.Placement == nil || instance.Spec.Placement.PlacementRef == nil {
 		return nil, nil
 	}
@@ -247,7 +247,7 @@ func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev
 		return nil, nil
 	}
 
-	clustermap := make(map[string]*clusterv1alpha1.Cluster)
+	clustermap := make(map[string]*corev1.ObjectReference)
 
 	klog.V(packageDetailLogLevel).Info("Referencing existing PlacementRule:", pref)
 
@@ -276,7 +276,7 @@ func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev
 	klog.V(packageDetailLogLevel).Info("Preparing cluster namespaces from ", pp)
 
 	for _, decision := range pp.Status.Decisions {
-		cluster := &clusterv1alpha1.Cluster{}
+		cluster := &corev1.ObjectReference{}
 		cluster.Name = decision.ClusterName
 		cluster.Namespace = decision.ClusterNamespace
 		clustermap[decision.ClusterName] = cluster
