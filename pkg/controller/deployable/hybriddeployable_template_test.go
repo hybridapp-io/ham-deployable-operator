@@ -19,9 +19,13 @@ import (
 	"encoding/json"
 	"testing"
 
+	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
+	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,10 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
 var (
@@ -90,7 +90,7 @@ func TestCreateObjectChild(t *testing.T) {
 
 	clusterScopeDeployer := fooDeployer.DeepCopy()
 	clusterScopeDeployer.Name = "cluster-" + fooDeployer.Name
-	clusterScopeDeployer.Spec.ClusterScope = true
+	clusterScopeDeployer.Spec.Scope = apiextensions.ClusterScoped
 	clusterScopeDeployer.Spec.Capabilities = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{""},
@@ -103,7 +103,7 @@ func TestCreateObjectChild(t *testing.T) {
 
 	namespaceScopeDeployer := fooDeployer.DeepCopy()
 	namespaceScopeDeployer.Name = "namespace-" + fooDeployer.Name
-	namespaceScopeDeployer.Spec.ClusterScope = false
+	namespaceScopeDeployer.Spec.Scope = apiextensions.NamespaceScoped
 	namespaceScopeDeployer.Spec.Capabilities = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{""},

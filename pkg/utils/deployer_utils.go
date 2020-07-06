@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 )
 
 func IsInClusterDeployer(deployer *appv1alpha1.Deployer) bool {
@@ -69,4 +70,8 @@ func StripGroup(gv string) string {
 	}
 
 	return strings.Split(gv, "/")[1]
+}
+
+func IsNamespaceScoped(deployer *appv1alpha1.Deployer) bool {
+	return deployer.Spec.Scope == "" || deployer.Spec.Scope == apiextensions.NamespaceScoped
 }
