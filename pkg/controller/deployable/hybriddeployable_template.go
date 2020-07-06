@@ -30,6 +30,7 @@ import (
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 
 	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
+	"github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 )
 
@@ -141,7 +142,8 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 	var key types.NamespacedName
 
 	for k, child := range gvrchildren {
-		if !deployer.Spec.ClusterScope && child.GetNamespace() != deployer.GetNamespace() {
+
+		if utils.IsNamespaceScoped(deployer) && child.GetNamespace() != deployer.GetNamespace() {
 			continue
 		}
 
@@ -395,7 +397,7 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	}
 
 	var objNamespace string
-	if deployer.Spec.ClusterScope && templateobj.GetNamespace() != "" {
+	if !utils.IsNamespaceScoped(deployer) && templateobj.GetNamespace() != "" {
 		objNamespace = templateobj.GetNamespace()
 	} else {
 		objNamespace = deployer.Namespace

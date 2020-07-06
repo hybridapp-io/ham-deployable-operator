@@ -17,6 +17,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -60,7 +61,7 @@ type DeployerSpec struct {
 	PlacementTarget *metav1.GroupVersionResource `json:"placementTarget,omitempty"`
 	OperatorRef     *corev1.ObjectReference      `json:"operatorRef,omitempty"`
 	Capabilities    []rbacv1.PolicyRule          `json:"capabilities,omitempty"`
-	ClusterScope    bool                         `json:"clusterScope,omitempty"`
+	Scope           apiextensions.ResourceScope  `json:"scope,omitempty"`
 }
 
 // DeployerStatus defines the observed state of Deployer

@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -136,7 +137,7 @@ func TestDeployableStatus(t *testing.T) {
 	deployerConfigMap.Name = "configmap"
 	deployerConfigMap.Spec.Type = "configmap"
 
-	deployerConfigMap.Spec.ClusterScope = true
+	deployerConfigMap.Spec.Scope = apiextensions.ClusterScoped
 	deployerConfigMap.Spec.Capabilities = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{""},
@@ -151,7 +152,7 @@ func TestDeployableStatus(t *testing.T) {
 	deployerEndpoints := fooDeployer.DeepCopy()
 	deployerEndpoints.Name = "endpoints"
 	deployerEndpoints.Spec.Type = "endpoints"
-	deployerEndpoints.Spec.ClusterScope = true
+	deployerEndpoints.Spec.Scope = apiextensions.ClusterScoped
 	deployerEndpoints.Spec.Capabilities = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{""},
@@ -166,7 +167,7 @@ func TestDeployableStatus(t *testing.T) {
 	deployerSecret := fooDeployer.DeepCopy()
 	deployerSecret.Name = "secret"
 	deployerSecret.Spec.Type = "secret"
-	deployerSecret.Spec.ClusterScope = true
+	deployerSecret.Spec.Scope = apiextensions.ClusterScoped
 	deployerSecret.Spec.Capabilities = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{""},
