@@ -3,13 +3,13 @@ module github.com/hybridapp-io/ham-deployable-operator
 go 1.13
 
 require (
-	github.com/google/martian v2.1.0+incompatible
 	github.com/onsi/gomega v1.8.1
 	github.com/open-cluster-management/multicloud-operators-deployable v0.0.0-20200409001040-158722845851
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20200409002246-5a52c406aebc
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.17.4
+	k8s.io/apiextensions-apiserver v0.17.4
 	k8s.io/apimachinery v0.17.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cluster-registry v0.0.6
