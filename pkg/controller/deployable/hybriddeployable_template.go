@@ -294,6 +294,10 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 					}
 				}
 			} else if currentTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
+				if templateobj.GetNamespace() == "" {
+					templateobj.SetNamespace(instance.Namespace)
+				}
+
 				if reflect.DeepEqual(currentTemplate, templateobj.Object) {
 					return object, nil
 				}

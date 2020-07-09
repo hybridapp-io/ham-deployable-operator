@@ -432,7 +432,9 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	codecs := serializer.NewCodecFactory(mgr.GetScheme())
 	tplobj, _, err := codecs.UniversalDeserializer().Decode(tpl.Raw, nil, nil)
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(tplobj).To(Equal(payloadBar))
+	namespacedPayloadBar := payloadBar.DeepCopy()
+	namespacedPayloadBar.Namespace = instance.Namespace
+	g.Expect(tplobj).To(Equal(namespacedPayloadBar))
 
 	//Expect deployable ro be removed on hybriddeployable delete
 	c.Delete(context.TODO(), instance)
