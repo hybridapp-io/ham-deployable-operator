@@ -29,7 +29,7 @@
 
 The hybridDeployable resource is introduced to handle deployable components running on non-kubernetes platform(s). This operator is intended to work as part of collection of operators for the HybridApplication.  See [References](#hybridApplication-references) for additional information.
 
-## Community, discussion, contribution, and support
+## Community, discussion, contribution and support
 
 Check the [CONTRIBUTING Doc](CONTRIBUTING.md) for how to contribute to the repo.
 
