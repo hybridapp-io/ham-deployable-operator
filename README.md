@@ -60,7 +60,7 @@ $ cd "$GOPATH"/src/github.com/hybridapp-io/ham-deployable-operator
 
 #### Build Deployable Operator
 
-Build the ham-deployable-operator and push it to a registry.  Modify the example below to reference a container reposistory you have access to.
+Build the ham-deployable-operator and push it to a registry. Modify the example below to reference a container reposistory you have access to.
 
 ```shell
 $ operator-sdk build quay.io/<user>/ham-deployable-operator:v0.1.0
