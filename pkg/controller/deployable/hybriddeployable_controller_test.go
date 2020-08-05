@@ -44,6 +44,12 @@ var (
 	clusterName      = "cluster-1"
 	clusterNamespace = "cluster-1"
 
+	clusterNS = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: clusterNamespace,
+		},
+	}
+
 	cluster = &clusterv1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
@@ -140,6 +146,11 @@ var (
 
 	hybridDeployableName      = "test-hd"
 	hybridDeployableNamespace = "test-hd-ns"
+	hdplNS                    = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: hybridDeployableNamespace,
+		},
+	}
 
 	hybridDeployableKey = types.NamespacedName{
 		Name:      hybridDeployableName,
@@ -206,9 +217,14 @@ func TestReconcileWithDeployer(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
+	cNS := clusterNS.DeepCopy()
+	g.Expect(c.Create(context.TODO(), cNS)).To(Succeed())
+
+	hdNS := hdplNS.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hdNS)).To(Succeed())
+
 	dplyr := deployer.DeepCopy()
 	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
-
 	defer c.Delete(context.TODO(), dplyr)
 
 	//Expect  payload is created in deployer namespace on hybriddeployable create

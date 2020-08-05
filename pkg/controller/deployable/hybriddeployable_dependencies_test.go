@@ -38,6 +38,12 @@ var (
 	hdplDepName      = "dependency"
 	hdplDepNamespace = "dependency-ns"
 
+	hdplDepNS = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: hdplDepNamespace,
+		},
+	}
+
 	hdplDependency = &appv1alpha1.Deployable{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hdplDepName,
@@ -110,6 +116,9 @@ func TestDependency(t *testing.T) {
 		close(stopMgr)
 		mgrStopped.Wait()
 	}()
+
+	hdNS := hdplDepNS.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hdNS)).To(Succeed())
 
 	// configmap deployer
 	deployer := fooDeployer.DeepCopy()

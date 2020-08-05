@@ -36,6 +36,14 @@ import (
 )
 
 var (
+	payloadNamespace = "payload"
+
+	payloadNS = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: payloadNamespace,
+		},
+	}
+
 	fooDeployer = &appv1alpha1.Deployer{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Deployer",
@@ -87,6 +95,9 @@ func TestCreateObjectChild(t *testing.T) {
 		close(stopMgr)
 		mgrStopped.Wait()
 	}()
+
+	hdNS := payloadNS.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hdNS)).To(Succeed())
 
 	clusterScopeDeployer := fooDeployer.DeepCopy()
 	clusterScopeDeployer.Name = "cluster-" + fooDeployer.Name

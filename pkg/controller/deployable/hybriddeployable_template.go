@@ -65,7 +65,8 @@ func (r *ReconcileHybridDeployable) purgeChildren(children map[schema.GroupVersi
 		for k, obj := range gvrchildren {
 			deletePolicy := metav1.DeletePropagationBackground
 			klog.Info("Deleting obsolete children ", obj.GetNamespace()+"/"+obj.GetName(), "in gvr: ", gvr)
-			err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
+			err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(context.TODO(),
+				obj.GetName(), metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 			rtobj := obj.(runtime.Object)
 			r.eventRecorder.RecordEvent(obj.(runtime.Object), "Delete",
 				"Hybrid Deployable delete resource "+
@@ -274,7 +275,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 						}
 
 						//update the deployable
-						if obj, err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(obj, metav1.UpdateOptions{}); err != nil {
+						if obj, err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(context.TODO(), obj, metav1.UpdateOptions{}); err != nil {
 							klog.Error("Failed to update deployable ", object.GetNamespace()+"/"+object.GetName())
 							return nil, err
 						}
@@ -360,7 +361,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 
 	klog.V(packageDetailLogLevel).Info("Updating Object:", obj)
 
-	return r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(obj, metav1.UpdateOptions{})
+	return r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer,
@@ -411,7 +412,7 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 
 	klog.V(packageDetailLogLevel).Info("Creating Object:", obj)
 
-	return r.dynamicClient.Resource(gvr).Namespace(objNamespace).Create(obj, metav1.CreateOptions{})
+	return r.dynamicClient.Resource(gvr).Namespace(objNamespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
 func (r *ReconcileHybridDeployable) genDeployableGenerateName(obj *unstructured.Unstructured) string {
