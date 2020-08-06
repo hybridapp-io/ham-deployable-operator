@@ -33,6 +33,11 @@ import (
 var (
 	hdplName      = "output"
 	hdplNamespace = "output-ns"
+	hdplOutputNS  = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: hdplNamespace,
+		},
+	}
 
 	hdDeployable = &appv1alpha1.Deployable{
 		ObjectMeta: metav1.ObjectMeta{
@@ -131,6 +136,9 @@ func TestDeployableStatus(t *testing.T) {
 		close(stopMgr)
 		mgrStopped.Wait()
 	}()
+
+	hdNS := hdplOutputNS.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hdNS)).To(Succeed())
 
 	// configmap deployer
 	deployerConfigMap := fooDeployer.DeepCopy()
