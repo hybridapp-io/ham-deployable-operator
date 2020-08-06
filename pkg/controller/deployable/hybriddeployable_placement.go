@@ -193,7 +193,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 	}
 
 	for gvr := range r.activeGVRMap {
-		objlist, err := r.dynamicClient.Resource(gvr).List(metav1.ListOptions{LabelSelector: labels.Set(nameLabel).String()})
+		objlist, err := r.dynamicClient.Resource(gvr).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(nameLabel).String()})
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +217,8 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 
 						deletePolicy := metav1.DeletePropagationBackground
 
-						_ = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
+						_ = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(context.TODO(),
+							obj.GetName(), metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 					} else {
 						gvkchildren[key] = obj.DeepCopy()
 					}

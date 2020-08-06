@@ -15,6 +15,7 @@
 package deployable
 
 import (
+	"context"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -77,7 +78,7 @@ func (r *hybridDeployableRegistry) discoverActiveGVRs() {
 			appv1alpha1.ControlledBy: appv1alpha1.HybridDeployableController,
 		}
 
-		objlist, err := r.dynamicClient.Resource(gvr).List(metav1.ListOptions{LabelSelector: labels.Set(keylabel).String()})
+		objlist, err := r.dynamicClient.Resource(gvr).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(keylabel).String()})
 		if err != nil {
 			klog.Info("Skipping error in listing resource. error:", err)
 			continue

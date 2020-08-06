@@ -114,7 +114,7 @@ func (r *ReconcileHybridDeployable) getDependenciesObject(instance *appv1alpha1.
 		if depns == "" {
 			depns = instance.Namespace
 		}
-		depobj, err = r.dynamicClient.Resource(depgvr).Namespace(depns).Get(depref.Name, metav1.GetOptions{})
+		depobj, err = r.dynamicClient.Resource(depgvr).Namespace(depns).Get(context.TODO(), depref.Name, metav1.GetOptions{})
 		if err != nil {
 			klog.Info("Failed to obtain dependency object with error: ", err)
 			return nil
@@ -209,10 +209,10 @@ func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1
 
 		klog.V(packageDetailLogLevel).Info("Ready to deploy dependency:", targetobj)
 
-		existing, err := r.dynamicClient.Resource(targetGVR).Namespace(deployer.Namespace).Get(depobj.GetName(), metav1.GetOptions{})
+		existing, err := r.dynamicClient.Resource(targetGVR).Namespace(deployer.Namespace).Get(context.TODO(), depobj.GetName(), metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
-				_, err = r.dynamicClient.Resource(targetGVR).Namespace(deployer.Namespace).Create(targetobj, metav1.CreateOptions{})
+				_, err = r.dynamicClient.Resource(targetGVR).Namespace(deployer.Namespace).Create(context.TODO(), targetobj, metav1.CreateOptions{})
 				if err != nil {
 					klog.Info("Failed to create new dependency object for deployer with error: ", err)
 					continue
@@ -226,7 +226,7 @@ func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1
 			targetobj.SetUID(existing.GetUID())
 			targetobj.SetGeneration(existing.GetGeneration())
 			targetobj.SetResourceVersion(existing.GetResourceVersion())
-			_, err = r.dynamicClient.Resource(targetGVR).Namespace(deployer.Namespace).Update(targetobj, metav1.UpdateOptions{})
+			_, err = r.dynamicClient.Resource(targetGVR).Namespace(deployer.Namespace).Update(context.TODO(), targetobj, metav1.UpdateOptions{})
 			if err != nil {
 				klog.Info("Failed to update existing dependency object for deployer with error: ", err)
 			}
