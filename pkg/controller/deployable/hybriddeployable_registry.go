@@ -74,18 +74,29 @@ func (r *hybridDeployableRegistry) initRegistry(config *rest.Config) error {
 
 func (r *hybridDeployableRegistry) discoverActiveGVRs() {
 	for gvk, gvr := range r.gvkGVRMap {
-		keylabel := map[string]string{
-			appv1alpha1.ControlledBy: appv1alpha1.HybridDeployableController,
-		}
 
-		objlist, err := r.dynamicClient.Resource(gvr).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(keylabel).String()})
-		if err != nil {
-			klog.Info("Skipping error in listing resource. error:", err)
-			continue
+		var toBeIgnored = false
+		for _, ignoredGVR := range ignoredGVRs {
+			if gvr == ignoredGVR {
+				toBeIgnored = true
+				break
+			}
 		}
+		if !toBeIgnored {
+			keylabel := map[string]string{
+				appv1alpha1.ControlledBy: appv1alpha1.HybridDeployableController,
+			}
 
-		if len(objlist.Items) > 0 {
-			r.activeGVRMap[gvr] = gvk
+			objlist, err := r.dynamicClient.Resource(gvr).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(keylabel).String()})
+			if err != nil {
+				klog.Info("Skipping error in listing resource. error:", err)
+				continue
+			}
+
+			if len(objlist.Items) > 0 {
+				r.activeGVRMap[gvr] = gvk
+			}
+
 		}
 	}
 }
@@ -185,6 +196,5 @@ func (r *hybridDeployableRegistry) registerGVK(gvk schema.GroupVersionKind) (sch
 	}
 
 	klog.V(packageDetailLogLevel).Info("Updated active GVK/GVR map:", r.activeGVRMap)
-
 	return gvr, nil
 }

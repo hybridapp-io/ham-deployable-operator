@@ -80,9 +80,9 @@ func (r *ReconcileHybridDeployable) purgeChildren(children map[schema.GroupVersi
 }
 
 func (r *ReconcileHybridDeployable) deployResourceByDeployers(instance *corev1alpha1.Deployable, deployers []*corev1alpha1.Deployer,
-	children map[schema.GroupVersionResource]gvrChildrenMap) {
+	children map[schema.GroupVersionResource]gvrChildrenMap) error {
 	if instance == nil || instance.Spec.HybridTemplates == nil || deployers == nil {
-		return
+		return nil
 	}
 
 	// prepare map to ease the search of template
@@ -106,10 +106,13 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployers(instance *corev1al
 		}
 
 		err := r.deployResourceByDeployer(instance, deployer, children, template)
+
 		if err != nil {
 			klog.Error("Failed to deploy resource by deployer, got error: ", err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer,
@@ -178,6 +181,10 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 	}
 
 	_, err = r.deployObjectForDeployer(instance, deployer, metaobj, templateobj)
+	if err != nil {
+		return err
+	}
+
 	if err == nil && metaobj != nil {
 		delete(gvrchildren, key)
 	}
@@ -194,7 +201,6 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer,
 	object metav1.Object, templateobj *unstructured.Unstructured) (metav1.Object, error) {
 	var err error
-
 	// generate deployable
 	klog.V(packageDetailLogLevel).Info("Processing Deployable for deployer type ", deployer.Spec.Type, ": ", templateobj)
 
@@ -360,14 +366,12 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 	}
 
 	klog.V(packageDetailLogLevel).Info("Updating Object:", obj)
-
 	return r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
 func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer,
 	templateobj *unstructured.Unstructured) (metav1.Object, error) {
 	gvk := templateobj.GetObjectKind().GroupVersionKind()
-
 	gvr, err := r.registerGVK(gvk)
 	if err != nil {
 		klog.Error("Failed to obtain right gvr for gvk ", gvk, " with error: ", err)
@@ -411,7 +415,6 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	r.prepareUnstructured(instance, obj)
 
 	klog.V(packageDetailLogLevel).Info("Creating Object:", obj)
-
 	return r.dynamicClient.Resource(gvr).Namespace(objNamespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 }
 
