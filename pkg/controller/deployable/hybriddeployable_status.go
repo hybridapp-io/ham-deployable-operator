@@ -18,6 +18,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -119,6 +120,9 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		Namespace: deployer.Namespace,
 		Name:      deployer.Name,
 	}
-
+	now := metav1.Now()
+	dplystatus.ResourceUnitStatus = dplv1.ResourceUnitStatus{
+		LastUpdateTime: &now,
+	}
 	instance.Status.PerDeployerStatus[key.String()] = dplystatus
 }

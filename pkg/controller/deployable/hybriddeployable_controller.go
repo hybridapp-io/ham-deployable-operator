@@ -18,6 +18,7 @@ import (
 	"context"
 	"reflect"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -527,8 +528,18 @@ func (r *ReconcileHybridDeployable) Reconcile(request reconcile.Request) (reconc
 
 	instance.Status.PerDeployerStatus = nil
 
-	r.deployResourceByDeployers(instance, deployers, children)
-
+	err = r.deployResourceByDeployers(instance, deployers, children)
+	if err != nil {
+		if len(deployers) > 0 && deployers[0] != nil {
+			key := deployers[0].Namespace + "/" + deployers[0].Name
+			if instance.Status.PerDeployerStatus[key].LastUpdateTime != nil {
+				sleepInterval := 2 * (time.Now().Unix() -
+					instance.Status.PerDeployerStatus[deployers[0].Name].LastUpdateTime.Time.Unix())
+				time.Sleep(time.Duration(sleepInterval) * time.Second)
+			}
+		}
+		return reconcile.Result{}, err
+	}
 	r.purgeChildren(children)
 
 	err = r.updateStatus(instance)
