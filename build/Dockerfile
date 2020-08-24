@@ -1,7 +1,6 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
 
 LABEL   name="quay.io/hybridappio/ham-deployable-operator" \
-        vendor="IBM" \
         summary="Hybrid Application Model - Deployable Operator" \
         description="Handles deployable components running on non-kubernetes platform(s)."
 
