@@ -16,6 +16,7 @@ package deployable
 
 import (
 	"context"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -120,9 +121,42 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		Namespace: deployer.Namespace,
 		Name:      deployer.Name,
 	}
-	now := metav1.Now()
-	dplystatus.ResourceUnitStatus = dplv1.ResourceUnitStatus{
-		LastUpdateTime: &now,
+	// update the lastUpdateTime only if PerDeployerStatus has changed
+	if instance.Status.PerDeployerStatus[key.String()].LastUpdateTime == nil ||
+		r.hasStatusChanged(key, instance, dplystatus) {
+		now := metav1.Now()
+		dplystatus.ResourceUnitStatus = dplv1.ResourceUnitStatus{
+			LastUpdateTime: &now,
+		}
+
 	}
 	instance.Status.PerDeployerStatus[key.String()] = dplystatus
+}
+
+func (r *ReconcileHybridDeployable) hasStatusChanged(key types.NamespacedName, instance *corev1alpha1.Deployable,
+	dplystatus corev1alpha1.PerDeployerStatus) bool {
+
+	if instance.Status.PerDeployerStatus != nil {
+		if !reflect.DeepEqual(instance.Status.PerDeployerStatus[key.String()].Outputs, dplystatus.Outputs) {
+			return true
+		}
+
+		if !reflect.DeepEqual(instance.Status.PerDeployerStatus[key.String()].Phase, dplystatus.Phase) {
+			return true
+		}
+
+		if !reflect.DeepEqual(instance.Status.PerDeployerStatus[key.String()].Reason, dplystatus.Reason) {
+			return true
+		}
+
+		if !reflect.DeepEqual(instance.Status.PerDeployerStatus[key.String()].Message, dplystatus.Message) {
+			return true
+		}
+
+		if !reflect.DeepEqual(instance.Status.PerDeployerStatus[key.String()].ResourceStatus, dplystatus.ResourceStatus) {
+			return true
+		}
+
+	}
+	return false
 }

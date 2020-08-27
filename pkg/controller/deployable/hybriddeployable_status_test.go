@@ -208,16 +208,23 @@ func TestDeployableStatus(t *testing.T) {
 	//g.Eventually(requests, timeout, interval).Should(Receive())
 
 	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
-
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name])).ToNot(BeNil())
+
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name]).LastUpdateTime).ToNot(BeNil())
+	firstUpdateTime := hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].LastUpdateTime
+
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].APIVersion)).To(Equal("v1"))
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Kind)).To(Equal("ConfigMap"))
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Name)).To(Equal("payload"))
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Namespace)).To(Equal(fooDeployer.Namespace))
 
-	// update placement to use the endpoints deployer
+	// update placement to use the endpoints deployer in addition to the configmap deployer
 	hdpl.Spec.Placement = &appv1alpha1.HybridPlacement{
 		Deployers: []corev1.ObjectReference{
+			{
+				Name:      deployerConfigMap.Name,
+				Namespace: deployerConfigMap.Namespace,
+			},
 			{
 				Name:      deployerEndpoints.Name,
 				Namespace: deployerEndpoints.Namespace,
@@ -235,8 +242,12 @@ func TestDeployableStatus(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive())
 
 	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
-
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name])).ToNot(BeNil())
+
+	// no change to the configmap hdpl status
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].LastUpdateTime)).To(Equal(firstUpdateTime))
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name]).LastUpdateTime).ToNot(BeNil())
+
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name].Outputs[0].APIVersion)).To(Equal("v1"))
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name].Outputs[0].Kind)).To(Equal("Endpoints"))
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name].Outputs[0].Name)).To(Equal("payload"))
