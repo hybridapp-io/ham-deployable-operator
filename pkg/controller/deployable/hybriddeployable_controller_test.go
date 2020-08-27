@@ -37,8 +37,11 @@ import (
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
-const timeout = time.Second * 10
-const interval = time.Millisecond * 10
+const (
+	timeout  = time.Second * 10
+	interval = time.Millisecond * 10
+	optime   = time.Second * 1
+)
 
 var (
 	clusterName      = "cluster-1"
@@ -238,13 +241,12 @@ func TestReconcileWithDeployer(t *testing.T) {
 		Namespace: deployer.Namespace,
 	}
 	g.Expect(c.Get(context.TODO(), plKey, pl)).To(Succeed())
-
-	//status update reconciliation
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
-	//Expect payload ro be removed on hybriddeployable delete
+	//Expect payload to be removed on hybriddeployable delete
 	c.Delete(context.TODO(), instance)
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
+	time.Sleep(optime)
 	g.Expect(c.Get(context.TODO(), plKey, pl)).NotTo(Succeed())
 }
 
