@@ -174,6 +174,7 @@ func TestCreateObjectChild(t *testing.T) {
 		Name:      payloadFoo.Name,
 		Namespace: namespaceScopeDeployer.Namespace,
 	}
+	time.Sleep(optime)
 	g.Expect(c.Get(context.TODO(), plKey2, pl2)).To(Succeed())
 
 	//status update reconciliation
