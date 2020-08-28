@@ -32,15 +32,25 @@ import (
 
 const (
 	CONFIGMAP = "configmap"
+	ENDPOINT  = "endpoint"
 )
 
 var (
 	hdplDepName      = "dependency"
 	hdplDepNamespace = "dependency-ns"
 
+	hdplDependentName      = "dependent"
+	hdplDependentNamespace = "dependent-ns"
+
 	hdplDepNS = corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: hdplDepNamespace,
+		},
+	}
+
+	hdplDependentNS = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: hdplDependentNamespace,
 		},
 	}
 
@@ -81,10 +91,34 @@ var (
 		APIVersion: "v1",
 	}
 
+	hdplRef = &corev1.ObjectReference{
+		Name:       hdplDependentName,
+		Kind:       hybriddeployableGVK.Kind,
+		APIVersion: hybriddeployableGVK.Group + "/" + hybriddeployableGVK.Version,
+	}
+
 	templateCM = appv1alpha1.HybridTemplate{
 		DeployerType: CONFIGMAP,
 		Template: &runtime.RawExtension{
 			Object: cm,
+		},
+	}
+
+	dependentEP = &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Endpoints",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ep",
+			Namespace: hdplDependentNamespace,
+		},
+	}
+
+	templateEndpoint = appv1alpha1.HybridTemplate{
+		DeployerType: ENDPOINT,
+		Template: &runtime.RawExtension{
+			Object: dependentEP,
 		},
 	}
 )
@@ -170,6 +204,108 @@ func TestDependency(t *testing.T) {
 	}, depEndpoint)).To(Succeed())
 
 	c.Delete(context.TODO(), hdpl)
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+}
+
+func TestHybridDeployableDependency(t *testing.T) {
+	g := NewWithT(t)
+
+	hdplDependent := &appv1alpha1.Deployable{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hdplDependentName,
+			Namespace: hdplDependentNamespace,
+		},
+		Spec: appv1alpha1.DeployableSpec{
+			HybridTemplates: []appv1alpha1.HybridTemplate{
+				templateEndpoint,
+			},
+		},
+	}
+
+	var c client.Client
+
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = mgr.GetClient()
+
+	rec := newReconciler(mgr)
+	recFn, requests := SetupTestReconcile(rec)
+	g.Expect(add(mgr, recFn)).To(Succeed())
+
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	hdNS := hdplDependentNS.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hdNS)).To(Succeed())
+
+	dependentDeployer := fooDeployer.DeepCopy()
+	dependentDeployer.Name = ENDPOINT
+	dependentDeployer.Namespace = hdplDependentNamespace
+	dependentDeployer.Spec.Type = ENDPOINT
+
+	dependentDeployer.Spec.Scope = apiextensions.ClusterScoped
+	dependentDeployer.Spec.Capabilities = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"endpoints"},
+			Verbs:     []string{"*"},
+		},
+	}
+	g.Expect(c.Create(context.TODO(), dependentDeployer)).NotTo(HaveOccurred())
+	defer c.Delete(context.TODO(), dependentDeployer)
+
+	dependentHDPL := hdplDependent.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dependentHDPL)).To(Succeed())
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	dependencyHDPL := hdplDependency.DeepCopy()
+	dependencyHDPL.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateEndpoint,
+		},
+	}
+	dependencyHDPL.Namespace = hdplDependentNamespace
+	dependencyHDPL.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      dependentDeployer.Name,
+				Namespace: dependentDeployer.Namespace,
+			},
+		},
+	}
+	dependencyHDPL.Spec.Dependencies = []corev1.ObjectReference{
+		*hdplRef,
+	}
+
+	g.Expect(c.Create(context.TODO(), dependencyHDPL)).To(Succeed())
+
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	c.Get(context.TODO(), types.NamespacedName{Name: dependencyHDPL.Name, Namespace: dependencyHDPL.Namespace}, dependencyHDPL)
+
+	// expect the dependency to be created
+	depHDPL := &appv1alpha1.Deployable{}
+	g.Expect(c.Get(context.TODO(), types.NamespacedName{
+		Name:      dependentHDPL.Name,
+		Namespace: dependentHDPL.Namespace,
+	}, depHDPL)).To(Succeed())
+
+	c.Delete(context.TODO(), dependentHDPL)
+	c.Delete(context.TODO(), dependencyHDPL)
 	g.Eventually(requests, timeout, interval).Should(Receive())
 
 }
