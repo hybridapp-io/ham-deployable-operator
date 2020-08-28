@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
@@ -146,6 +147,7 @@ func TestCreateObjectChild(t *testing.T) {
 		Name:      payloadFoo.Name,
 		Namespace: payloadFoo.Namespace,
 	}
+	time.Sleep(optime)
 	g.Expect(c.Get(context.TODO(), plKey1, pl1)).To(Succeed())
 
 	//status update reconciliation
