@@ -255,6 +255,9 @@ func TestDeployableStatus(t *testing.T) {
 
 	// hdpl status update
 	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
 	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name]).LastUpdateTime).ToNot(BeNil())
 
