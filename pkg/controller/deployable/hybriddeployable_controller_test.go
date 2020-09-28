@@ -250,12 +250,10 @@ func TestReconcileWithDeployer(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	//Expect payload to be removed on hybriddeployable delete
-	defer func() {
-		if err = c.Delete(context.TODO(), instance); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
+	if err = c.Delete(context.TODO(), instance); err != nil {
+		klog.Error(err)
+		t.Fail()
+	}
 
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 	time.Sleep(optime)
@@ -344,12 +342,6 @@ func TestReconcileWithDeployerLabel(t *testing.T) {
 	pl = &corev1.ConfigMap{}
 	g.Expect(c.Get(context.TODO(), plKey, pl)).To(Succeed())
 
-	defer func() {
-		if err = c.Delete(context.TODO(), pl); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
 	g.Expect(pl.Data).To(Equal(payloadBar.Data))
 
 	//Expect payload ro be removed on hybriddeployable delete
@@ -407,12 +399,6 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 
 	prule := placementRule.DeepCopy()
 	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
-	defer func() {
-		if err = c.Delete(context.TODO(), prule); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
 
 	dplyr := deployer.DeepCopy()
 	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
@@ -489,13 +475,6 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	}
 	dpl := &dplv1.Deployable{}
 	g.Expect(c.Get(context.TODO(), deployableKey, dpl)).To(Succeed())
-
-	defer func() {
-		if err = c.Delete(context.TODO(), dpl); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
 
 	tpl := dpl.Spec.Template
 	codecs := serializer.NewCodecFactory(mgr.GetScheme())
