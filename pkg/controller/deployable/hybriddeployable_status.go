@@ -37,7 +37,15 @@ func (r *ReconcileHybridDeployable) updateStatus(instance *corev1alpha1.Deployab
 
 func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer) {
 	var err error
-
+	instanceKey := &types.NamespacedName{
+		Name:      instance.Name,
+		Namespace: instance.Namespace,
+	}
+	err = r.Get(context.TODO(), *instanceKey, instance)
+	if err != nil {
+		klog.Error("Failed to retrieve instance ", instanceKey.String())
+		return
+	}
 	labelmap := map[string]string{
 		corev1alpha1.OutputOf: instance.Name,
 	}
@@ -45,7 +53,6 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		Namespace:     deployer.Namespace,
 		LabelSelector: labels.Set(labelmap).AsSelector(),
 	}
-
 	dplystatus := corev1alpha1.PerDeployerStatus{}
 
 	if hdplutils.IsInClusterDeployer(deployer) {
@@ -122,12 +129,12 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		Name:      deployer.Name,
 	}
 	// update the lastUpdateTime only if PerDeployerStatus has changed
-	if instance.Status.PerDeployerStatus[key.String()].LastUpdateTime == nil ||
-		r.hasStatusChanged(key, instance, dplystatus) {
+	if instance.Status.PerDeployerStatus[key.String()].LastUpdateTime != nil &&
+		!r.hasStatusChanged(key, instance, dplystatus) {
+		dplystatus.LastUpdateTime = instance.Status.PerDeployerStatus[key.String()].LastUpdateTime
+	} else {
 		now := metav1.Now()
-		dplystatus.ResourceUnitStatus = dplv1.ResourceUnitStatus{
-			LastUpdateTime: &now,
-		}
+		dplystatus.LastUpdateTime = &now
 
 	}
 	instance.Status.PerDeployerStatus[key.String()] = dplystatus
@@ -135,7 +142,6 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 
 func (r *ReconcileHybridDeployable) hasStatusChanged(key types.NamespacedName, instance *corev1alpha1.Deployable,
 	dplystatus corev1alpha1.PerDeployerStatus) bool {
-
 	if instance.Status.PerDeployerStatus != nil {
 		if !reflect.DeepEqual(instance.Status.PerDeployerStatus[key.String()].Outputs, dplystatus.Outputs) {
 			return true

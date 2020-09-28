@@ -204,9 +204,6 @@ func TestDeployableStatus(t *testing.T) {
 	// hdpl status update
 	g.Eventually(requests, timeout, interval).Should(Receive())
 
-	// config map also triggers output mapper reconciliation
-	//g.Eventually(requests, timeout, interval).Should(Receive())
-
 	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name])).ToNot(BeNil())
 
@@ -238,14 +235,30 @@ func TestDeployableStatus(t *testing.T) {
 	// hdpl status update
 	g.Eventually(requests, timeout, interval).Should(Receive())
 
-	// endpoints also triggers output mapper reconciliation
-	g.Eventually(requests, timeout, interval).Should(Receive())
-
 	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name])).ToNot(BeNil())
 
 	// no change to the configmap hdpl status
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].LastUpdateTime)).To(Equal(firstUpdateTime))
+
+	hdpl.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      deployerEndpoints.Name,
+				Namespace: deployerEndpoints.Namespace,
+			},
+		},
+	}
+	g.Expect(c.Update(context.TODO(), hdpl)).To(Succeed())
+	// wait for create
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name]).LastUpdateTime).ToNot(BeNil())
 
 	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerEndpoints.Name].Outputs[0].APIVersion)).To(Equal("v1"))
