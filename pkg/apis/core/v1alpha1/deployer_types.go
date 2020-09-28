@@ -51,6 +51,11 @@ var (
 		Version:  "v1alpha1",
 		Resource: "clusters",
 	}
+	DeployerPlacementTarget = &metav1.GroupVersionResource{
+		Group:    "core.hybridapp.io",
+		Version:  "v1alpha1",
+		Resource: "deployers",
+	}
 )
 
 // DeployerSpec defines the desired state of Deployer

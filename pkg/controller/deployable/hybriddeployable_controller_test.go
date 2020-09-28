@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1alpha1 "k8s.io/cluster-registry/pkg/apis/clusterregistry/v1alpha1"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -228,7 +229,12 @@ func TestReconcileWithDeployer(t *testing.T) {
 
 	dplyr := deployer.DeepCopy()
 	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
-	defer c.Delete(context.TODO(), dplyr)
+	defer func() {
+		if err = c.Delete(context.TODO(), dplyr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
 
 	//Expect  payload is created in deployer namespace on hybriddeployable create
 	instance := hybridDeployable.DeepCopy()
@@ -244,7 +250,11 @@ func TestReconcileWithDeployer(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	//Expect payload to be removed on hybriddeployable delete
-	c.Delete(context.TODO(), instance)
+	if err = c.Delete(context.TODO(), instance); err != nil {
+		klog.Error(err)
+		t.Fail()
+	}
+
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 	time.Sleep(optime)
 	g.Expect(c.Get(context.TODO(), plKey, pl)).NotTo(Succeed())
@@ -294,8 +304,12 @@ func TestReconcileWithDeployerLabel(t *testing.T) {
 
 	dplyr := deployer.DeepCopy()
 	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
-
-	defer c.Delete(context.TODO(), dplyr)
+	defer func() {
+		if err = c.Delete(context.TODO(), dplyr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
 
 	//Expect  payload is created in deplyer namespace on hybriddeployable create
 
@@ -328,11 +342,14 @@ func TestReconcileWithDeployerLabel(t *testing.T) {
 	pl = &corev1.ConfigMap{}
 	g.Expect(c.Get(context.TODO(), plKey, pl)).To(Succeed())
 
-	defer c.Delete(context.TODO(), pl)
 	g.Expect(pl.Data).To(Equal(payloadBar.Data))
 
 	//Expect payload ro be removed on hybriddeployable delete
-	c.Delete(context.TODO(), instance)
+	if err = c.Delete(context.TODO(), instance); err != nil {
+		klog.Error(err)
+		t.Fail()
+	}
+
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 	g.Expect(c.Get(context.TODO(), plKey, pl)).NotTo(Succeed())
 }
@@ -383,22 +400,32 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	prule := placementRule.DeepCopy()
 	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
 
-	defer c.Delete(context.TODO(), prule)
-
 	dplyr := deployer.DeepCopy()
 	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
-
-	defer c.Delete(context.TODO(), dplyr)
+	defer func() {
+		if err = c.Delete(context.TODO(), dplyr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
 
 	dset := deployerSet.DeepCopy()
 	g.Expect(c.Create(context.TODO(), dset)).To(Succeed())
-
-	defer c.Delete(context.TODO(), dset)
-
+	defer func() {
+		if err = c.Delete(context.TODO(), dset); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
 	clstr := cluster.DeepCopy()
 	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
 
-	defer c.Delete(context.TODO(), clstr)
+	defer func() {
+		if err = c.Delete(context.TODO(), clstr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
 
 	//Pull back the placementrule and update the status subresource
 	pr := &placementv1.PlacementRule{}
@@ -415,7 +442,12 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	pr.Status.Decisions = newpd
 	g.Expect(c.Status().Update(context.TODO(), pr.DeepCopy())).To(Succeed())
 
-	defer c.Delete(context.TODO(), pr)
+	defer func() {
+		if err = c.Delete(context.TODO(), pr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
 
 	//Expect deployable is created on hybriddeployable create
 	instance := hybridDeployable.DeepCopy()
@@ -444,8 +476,6 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	dpl := &dplv1.Deployable{}
 	g.Expect(c.Get(context.TODO(), deployableKey, dpl)).To(Succeed())
 
-	defer c.Delete(context.TODO(), dpl)
-
 	tpl := dpl.Spec.Template
 	codecs := serializer.NewCodecFactory(mgr.GetScheme())
 	tplobj, _, err := codecs.UniversalDeserializer().Decode(tpl.Raw, nil, nil)
@@ -455,7 +485,11 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	g.Expect(tplobj).To(Equal(namespacedPayloadBar))
 
 	//Expect deployable ro be removed on hybriddeployable delete
-	c.Delete(context.TODO(), instance)
+	if err = c.Delete(context.TODO(), instance); err != nil {
+		klog.Error(err)
+		t.Fail()
+	}
+
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 	g.Expect(c.Get(context.TODO(), deployableKey, dpl)).NotTo(Succeed())
 }
