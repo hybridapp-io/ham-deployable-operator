@@ -27,22 +27,21 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	placementutils "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/utils"
-
 	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
+	placementutils "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/utils"
 )
 
 // Top priority: placementRef, ignore others
 // Next priority: clusterNames, ignore selector
 // Bottomline: Use label selector
-func (r *ReconcileHybridDeployable) getDeployersByPlacement(instance *corev1alpha1.Deployable) ([]*corev1alpha1.Deployer, error) {
+func (r *ReconcileHybridDeployable) getDeployersByPlacement(instance *corev1alpha1.Deployable) ([]*prulev1alpha1.Deployer, error) {
 	if instance == nil || instance.Spec.Placement == nil {
 		return nil, nil
 	}
 
-	var deployers []*corev1alpha1.Deployer
+	var deployers []*prulev1alpha1.Deployer
 
 	var err error
 
@@ -53,7 +52,7 @@ func (r *ReconcileHybridDeployable) getDeployersByPlacement(instance *corev1alph
 
 	if instance.Spec.Placement.Deployers != nil {
 		for _, dplyref := range instance.Spec.Placement.Deployers {
-			deployer := &corev1alpha1.Deployer{}
+			deployer := &prulev1alpha1.Deployer{}
 
 			err = r.Get(context.TODO(), types.NamespacedName{Name: dplyref.Name, Namespace: dplyref.Namespace}, deployer)
 			if err != nil {
@@ -83,7 +82,7 @@ func (r *ReconcileHybridDeployable) getDeployersByPlacement(instance *corev1alph
 	return nil, nil
 }
 
-func (r *ReconcileHybridDeployable) getDeployersByLabelSelector(deployerLabels *metav1.LabelSelector) ([]*corev1alpha1.Deployer, error) {
+func (r *ReconcileHybridDeployable) getDeployersByLabelSelector(deployerLabels *metav1.LabelSelector) ([]*prulev1alpha1.Deployer, error) {
 	clSelector, err := placementutils.ConvertLabels(deployerLabels)
 	if err != nil {
 		return nil, err
@@ -91,7 +90,7 @@ func (r *ReconcileHybridDeployable) getDeployersByLabelSelector(deployerLabels *
 
 	klog.V(packageDetailLogLevel).Info("Using Cluster LabelSelector ", clSelector)
 
-	dplylist := &corev1alpha1.DeployerList{}
+	dplylist := &prulev1alpha1.DeployerList{}
 
 	err = r.List(context.TODO(), dplylist, &client.ListOptions{LabelSelector: clSelector})
 
@@ -102,7 +101,7 @@ func (r *ReconcileHybridDeployable) getDeployersByLabelSelector(deployerLabels *
 
 	klog.V(packageDetailLogLevel).Info("listed deployers:", dplylist.Items)
 
-	var deployers []*corev1alpha1.Deployer
+	var deployers []*prulev1alpha1.Deployer
 
 	for _, dply := range dplylist.Items {
 		deployer := dply.DeepCopy()
@@ -121,68 +120,238 @@ func (r *ReconcileHybridDeployable) getDeployersByLabelSelector(deployerLabels *
 	return deployers, err
 }
 
-func (r *ReconcileHybridDeployable) getDeployersByPlacementReference(instance *corev1alpha1.Deployable) ([]*corev1alpha1.Deployer, error) {
-	var deployers []*corev1alpha1.Deployer
+// func (r *ReconcileHybridDeployable) getDeployersByPlacementReference(instance *corev1alpha1.Deployable) ([]*corev1alpha1.Deployer, error) {
+// 	var deployers []*corev1alpha1.Deployer
 
-	clustermap, err := r.getClusterMapByPlacementRule(instance)
+// 	// hpr decisions can be either deployers or clusters for now
 
+// 	clustermap, err := r.getClusterMapByPlacementRule(instance)
+
+// 	if err != nil {
+// 		klog.Error("Failed find target namespaces with error: ", err)
+// 		return nil, err
+// 	}
+
+// 	klog.V(packageDetailLogLevel).Info("Find clusters for hybrid deployable:", clustermap)
+
+// 	for _, cl := range clustermap {
+// 		dset := &corev1alpha1.DeployerSet{}
+// 		key := types.NamespacedName{
+// 			Namespace: cl.Namespace,
+// 			Name:      cl.Name,
+// 		}
+// 		deployer := &corev1alpha1.Deployer{}
+// 		deployer.Name = cl.Name
+// 		deployer.Namespace = cl.Namespace
+// 		deployer.Spec.Type = corev1alpha1.DefaultDeployerType
+
+// 		err = r.Get(context.TODO(), key, dset)
+// 		klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", cl.Namespace, "/", cl.Name, " with err:", err, " result: ", dset)
+
+// 		if err != nil {
+// 			if !errors.IsNotFound(err) {
+// 				continue
+// 			}
+// 		} else {
+// 			if len(dset.Spec.Deployers) > 0 {
+// 				dset.Spec.Deployers[0].Spec.DeepCopyInto(&deployer.Spec)
+
+// 				if dset.Spec.DefaultDeployer != "" {
+// 					for _, dply := range dset.Spec.Deployers {
+// 						if dply.Key == dset.Spec.DefaultDeployer {
+// 							dply.Spec.DeepCopyInto(&deployer.Spec)
+// 							break
+// 						}
+// 					}
+// 				}
+// 				klog.V(packageDetailLogLevel).Info("Copyied deployer info:", deployer)
+// 			}
+// 		}
+
+// 		klog.V(packageDetailLogLevel).Info("Adding deployer: ", deployer)
+
+// 		annotations := deployer.GetAnnotations()
+// 		if annotations == nil {
+// 			annotations = make(map[string]string)
+// 		}
+
+// 		deployer.SetAnnotations(annotations)
+// 		hdplutils.SetRemoteDeployer(deployer)
+
+// 		deployers = append(deployers, deployer)
+// 	}
+
+// 	klog.V(packageDetailLogLevel).Info("Deploying to deployers", deployers)
+
+// 	return deployers, nil
+// }
+
+// func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev1alpha1.Deployable) (map[string]*corev1.ObjectReference, error) {
+// 	if instance == nil || instance.Spec.Placement == nil || instance.Spec.Placement.PlacementRef == nil {
+// 		return nil, nil
+// 	}
+
+// 	pref := instance.Spec.Placement.PlacementRef
+
+// 	// only default to mcm placementrule, and only support mcm placementrule now
+// 	if len(pref.Kind) > 0 && pref.Kind != "PlacementRule" || len(pref.APIVersion) > 0 && pref.APIVersion != "app.ibm.com/v1alpha1" {
+// 		klog.Warning("Unsupported placement reference:", pref)
+
+// 		return nil, nil
+// 	}
+
+// 	clustermap := make(map[string]*corev1.ObjectReference)
+
+// 	klog.V(packageDetailLogLevel).Info("Referencing existing PlacementRule:", pref)
+
+// 	// get placementpolicy resource
+// 	pp := &prulev1alpha1.PlacementRule{}
+// 	pkey := types.NamespacedName{
+// 		Name:      pref.Name,
+// 		Namespace: pref.Namespace,
+// 	}
+
+// 	if pref.Namespace == "" {
+// 		pkey.Namespace = instance.Namespace
+// 	}
+
+// 	err := r.Get(context.TODO(), pkey, pp)
+// 	if err != nil {
+// 		if errors.IsNotFound(err) {
+// 			klog.Warning("Failed to locate placement reference ", pref.Namespace+"/"+pref.Name)
+
+// 			return nil, nil
+// 		}
+
+// 		return nil, err
+// 	}
+
+// 	klog.V(packageDetailLogLevel).Info("Preparing cluster namespaces from ", pp)
+
+// 	for _, decision := range pp.Status.Decisions {
+// 		cluster := &corev1.ObjectReference{}
+// 		cluster.Name = decision.ClusterName
+// 		cluster.Namespace = decision.ClusterNamespace
+// 		clustermap[decision.ClusterName] = cluster
+// 	}
+
+// 	return clustermap, nil
+// }
+
+func (r *ReconcileHybridDeployable) getDeployersByPlacementReference(instance *corev1alpha1.Deployable) ([]*prulev1alpha1.Deployer, error) {
+	var deployers []*prulev1alpha1.Deployer
+
+	// hpr decisions can be either deployers or clusters for now
+	decisions, err := r.getPlacementDecisions(instance)
 	if err != nil {
-		klog.Error("Failed find target namespaces with error: ", err)
+		klog.Error("Failed find retrieve placement rule decisions with error: ", err)
 		return nil, err
 	}
+	if decisions != nil {
+		for _, decision := range decisions {
+			if decision.Kind == corev1alpha1.DeployerGVK.Kind && decision.APIVersion == corev1alpha1.DeployerGVK.Group+"/"+corev1alpha1.DeployerGVK.Version {
+				deployer := &prulev1alpha1.Deployer{}
+				key := types.NamespacedName{
+					Namespace: decision.Namespace,
+					Name:      decision.Name,
+				}
 
-	klog.V(packageDetailLogLevel).Info("Find clusters for hybrid deployable:", clustermap)
+				err = r.Get(context.TODO(), key, deployer)
+				if err != nil {
+					klog.Error("Failed find retrieve deployer ", key.String(), " with error ", err)
+					continue
+				}
+				deployers = append(deployers, deployer)
+			} else if decision.Kind == corev1alpha1.ClusterGVK.Kind && decision.APIVersion == corev1alpha1.ClusterGVK.Group+"/"+corev1alpha1.ClusterGVK.Version {
+				dset := &prulev1alpha1.DeployerSet{}
+				key := types.NamespacedName{
+					Namespace: decision.Namespace,
+					Name:      decision.Name,
+				}
+				deployer := &prulev1alpha1.Deployer{}
+				deployer.Name = decision.Name
+				deployer.Namespace = decision.Namespace
+				deployer.Spec.Type = corev1alpha1.DefaultDeployerType
 
-	for _, cl := range clustermap {
-		dset := &corev1alpha1.DeployerSet{}
-		key := types.NamespacedName{
-			Namespace: cl.Namespace,
-			Name:      cl.Name,
-		}
-		deployer := &corev1alpha1.Deployer{}
-		deployer.Name = cl.Name
-		deployer.Namespace = cl.Namespace
-		deployer.Spec.Type = corev1alpha1.DefaultDeployerType
+				err = r.Get(context.TODO(), key, dset)
+				klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", decision.Namespace, "/", decision.Name, " with err:", err, " result: ", dset)
 
-		err = r.Get(context.TODO(), key, dset)
-		klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", cl.Namespace, "/", cl.Name, " with err:", err, " result: ", dset)
+				if err != nil {
+					if !errors.IsNotFound(err) {
+						continue
+					}
+				} else {
+					if len(dset.Spec.Deployers) > 0 {
+						dset.Spec.Deployers[0].Spec.DeepCopyInto(&deployer.Spec)
 
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				continue
-			}
-		} else {
-			if len(dset.Spec.Deployers) > 0 {
-				dset.Spec.Deployers[0].Spec.DeepCopyInto(&deployer.Spec)
-
-				if dset.Spec.DefaultDeployer != "" {
-					for _, dply := range dset.Spec.Deployers {
-						if dply.Key == dset.Spec.DefaultDeployer {
-							dply.Spec.DeepCopyInto(&deployer.Spec)
-							break
+						if dset.Spec.DefaultDeployer != "" {
+							for _, dply := range dset.Spec.Deployers {
+								if dply.Key == dset.Spec.DefaultDeployer {
+									dply.Spec.DeepCopyInto(&deployer.Spec)
+									break
+								}
+							}
 						}
+						klog.V(packageDetailLogLevel).Info("Copyied deployer info:", deployer)
 					}
 				}
-				klog.V(packageDetailLogLevel).Info("Copyied deployer info:", deployer)
+
+				klog.V(packageDetailLogLevel).Info("Adding deployer: ", deployer)
+
+				annotations := deployer.GetAnnotations()
+				if annotations == nil {
+					annotations = make(map[string]string)
+				}
+
+				deployer.SetAnnotations(annotations)
+				hdplutils.SetRemoteDeployer(deployer)
+
+				deployers = append(deployers, deployer)
+			} else {
+				klog.Error("Unsupported decision type {APIVersion: ", decision.APIVersion, " Kind: ", decision.Kind, "}")
+				continue
 			}
 		}
+		return deployers, nil
+	}
+	klog.Info("No placement rule decisions found for hybrid deployable ", instance.Namespace+"/"+instance.Name)
+	return nil, nil
+}
 
-		klog.V(packageDetailLogLevel).Info("Adding deployer: ", deployer)
-
-		annotations := deployer.GetAnnotations()
-		if annotations == nil {
-			annotations = make(map[string]string)
-		}
-
-		deployer.SetAnnotations(annotations)
-		hdplutils.SetRemoteDeployer(deployer)
-
-		deployers = append(deployers, deployer)
+func (r *ReconcileHybridDeployable) getPlacementDecisions(instance *corev1alpha1.Deployable) ([]corev1.ObjectReference, error) {
+	if instance == nil || instance.Spec.Placement == nil || instance.Spec.Placement.PlacementRef == nil {
+		return nil, nil
 	}
 
-	klog.V(packageDetailLogLevel).Info("Deploying to deployers", deployers)
+	pref := instance.Spec.Placement.PlacementRef
+	if pref != nil {
+		// get placementpolicy resource
+		pp := &prulev1alpha1.PlacementRule{}
+		pkey := types.NamespacedName{
+			Name:      pref.Name,
+			Namespace: pref.Namespace,
+		}
 
-	return deployers, nil
+		if pref.Namespace == "" {
+			pkey.Namespace = instance.Namespace
+		}
+
+		err := r.Get(context.TODO(), pkey, pp)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.Warning("Failed to locate placement reference ", pref.Namespace+"/"+pref.Name)
+
+				return nil, nil
+			}
+
+			return nil, err
+		}
+
+		return pp.Status.Decisions, nil
+
+	}
+	klog.Info("No placement references found for deployable ", instance.Namespace+"/"+instance.Name)
+	return nil, nil
 }
 
 func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (map[schema.GroupVersionResource]gvrChildrenMap, error) {
@@ -232,56 +401,4 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 	}
 
 	return children, nil
-}
-
-func (r *ReconcileHybridDeployable) getClusterMapByPlacementRule(instance *corev1alpha1.Deployable) (map[string]*corev1.ObjectReference, error) {
-	if instance == nil || instance.Spec.Placement == nil || instance.Spec.Placement.PlacementRef == nil {
-		return nil, nil
-	}
-
-	pref := instance.Spec.Placement.PlacementRef
-
-	// only default to mcm placementrule, and only support mcm placementrule now
-	if len(pref.Kind) > 0 && pref.Kind != "PlacementRule" || len(pref.APIVersion) > 0 && pref.APIVersion != "app.ibm.com/v1alpha1" {
-		klog.Warning("Unsupported placement reference:", pref)
-
-		return nil, nil
-	}
-
-	clustermap := make(map[string]*corev1.ObjectReference)
-
-	klog.V(packageDetailLogLevel).Info("Referencing existing PlacementRule:", pref)
-
-	// get placementpolicy resource
-	pp := &placementv1.PlacementRule{}
-	pkey := types.NamespacedName{
-		Name:      pref.Name,
-		Namespace: pref.Namespace,
-	}
-
-	if pref.Namespace == "" {
-		pkey.Namespace = instance.Namespace
-	}
-
-	err := r.Get(context.TODO(), pkey, pp)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Warning("Failed to locate placement reference ", pref.Namespace+"/"+pref.Name)
-
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	klog.V(packageDetailLogLevel).Info("Preparing cluster namespaces from ", pp)
-
-	for _, decision := range pp.Status.Decisions {
-		cluster := &corev1.ObjectReference{}
-		cluster.Name = decision.ClusterName
-		cluster.Namespace = decision.ClusterNamespace
-		clustermap[decision.ClusterName] = cluster
-	}
-
-	return clustermap, nil
 }

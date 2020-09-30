@@ -19,10 +19,11 @@ import (
 	"strings"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 )
 
-func IsInClusterDeployer(deployer *appv1alpha1.Deployer) bool {
+func IsInClusterDeployer(deployer *prulev1alpha1.Deployer) bool {
 	incluster := true
 
 	annotations := deployer.GetAnnotations()
@@ -35,13 +36,13 @@ func IsInClusterDeployer(deployer *appv1alpha1.Deployer) bool {
 	return incluster
 }
 
-func SetInClusterDeployer(deployer *appv1alpha1.Deployer) {
+func SetInClusterDeployer(deployer *prulev1alpha1.Deployer) {
 	annotations := deployer.GetAnnotations()
 	annotations[appv1alpha1.DeployerInCluster] = "true"
 	deployer.SetAnnotations(annotations)
 }
 
-func SetRemoteDeployer(deployer *appv1alpha1.Deployer) {
+func SetRemoteDeployer(deployer *prulev1alpha1.Deployer) {
 	annotations := deployer.GetAnnotations()
 	annotations[appv1alpha1.DeployerInCluster] = "false"
 	deployer.SetAnnotations(annotations)
@@ -72,6 +73,6 @@ func StripGroup(gv string) string {
 	return strings.Split(gv, "/")[1]
 }
 
-func IsNamespaceScoped(deployer *appv1alpha1.Deployer) bool {
+func IsNamespaceScoped(deployer *prulev1alpha1.Deployer) bool {
 	return deployer.Spec.Scope == "" || deployer.Spec.Scope == apiextensions.NamespaceScoped
 }

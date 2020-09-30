@@ -25,17 +25,17 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
-
 	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
+	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 )
 
 func (r *ReconcileHybridDeployable) updateStatus(instance *corev1alpha1.Deployable) error {
 	return r.Status().Update(context.TODO(), instance)
 }
 
-func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alpha1.Deployable, deployer *corev1alpha1.Deployer) {
+func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer) {
 	var err error
 	instanceKey := &types.NamespacedName{
 		Name:      instance.Name,
