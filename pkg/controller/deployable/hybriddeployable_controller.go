@@ -34,11 +34,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	"github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
+	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
 const (
@@ -113,7 +113,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(
 		&source.Kind{
-			Type: &appv1alpha1.DeployerSet{}},
+			Type: &prulev1alpha1.DeployerSet{}},
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: &deployersetMapper{mgr.GetClient()},
 		},
@@ -124,7 +124,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(
 		&source.Kind{
-			Type: &appv1alpha1.Deployer{}},
+			Type: &prulev1alpha1.Deployer{}},
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: &deployerMapper{mgr.GetClient()},
 		},

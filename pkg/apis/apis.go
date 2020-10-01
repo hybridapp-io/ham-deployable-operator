@@ -17,6 +17,7 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
+	hprlapis "github.com/hybridapp-io/ham-placement/pkg/apis"
 	dplapis "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis"
 )
 
@@ -29,6 +30,9 @@ func AddToScheme(s *runtime.Scheme) error {
 	if err != nil {
 		return err
 	}
-
+	err = hprlapis.AddToScheme(s)
+	if err != nil {
+		return err
+	}
 	return AddToSchemes.AddToScheme(s)
 }

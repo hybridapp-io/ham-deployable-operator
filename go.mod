@@ -3,6 +3,7 @@ module github.com/hybridapp-io/ham-deployable-operator
 go 1.13
 
 require (
+	github.com/hybridapp-io/ham-placement v0.0.0-20200930154109-0cc75e4d1c3e
 	github.com/onsi/gomega v1.9.0
 	github.com/open-cluster-management/multicloud-operators-deployable v0.0.0-20200603180154-d1d17d718c30
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.1-2020-05-28-18-29-00.0.20200603172904-efde26079087
