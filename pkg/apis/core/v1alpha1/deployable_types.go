@@ -25,12 +25,53 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 var (
-	HostingHybridDeployable    = SchemeGroupVersion.Group + "/hosting-hybriddeployable"
-	ControlledBy               = SchemeGroupVersion.Group + "/controlled-by"
-	OutputOf                   = SchemeGroupVersion.Group + "/output-of"
-	DependencyFrom             = SchemeGroupVersion.Group + "/dependency-from"
-	HybridDeployableController = "hybriddeployable"
-	DefaultDeployerType        = "kubernetes"
+	// AnnotationHybridDiscovery indicates whether a resource has been created as a result of a discovery process
+	AnnotationHybridDiscovery = SchemeGroupVersion.Group + "/hybrid-discovery"
+
+	//AnnotationClusterScope indicates whether discovery should look for resources cluster wide rather then in a specific namespace
+	AnnotationClusterScope = SchemeGroupVersion.Group + "/hybrid-discovery-clusterscoped"
+
+	SourceObject = SchemeGroupVersion.Group + "/source-object"
+
+	DeployerType = SchemeGroupVersion.Group + "/deployer-type"
+
+	HostingDeployer = SchemeGroupVersion.Group + "/hosting-deployer"
+
+	DeployerInCluster                = SchemeGroupVersion.Group + "/deployer-in-cluster"
+	HostingHybridDeployable          = SchemeGroupVersion.Group + "/hosting-hybriddeployable"
+	ControlledBy                     = SchemeGroupVersion.Group + "/controlled-by"
+	OutputOf                         = SchemeGroupVersion.Group + "/output-of"
+	DependencyFrom                   = SchemeGroupVersion.Group + "/dependency-from"
+	HybridDeployableController       = "hybriddeployable"
+	DefaultDeployerType              = "kubernetes"
+	DefaultKubernetesPlacementTarget = &metav1.GroupVersionResource{
+		Group:    "clusterregistry.k8s.io",
+		Version:  "v1alpha1",
+		Resource: "clusters",
+	}
+	ClusterGVK = &metav1.GroupVersionKind{
+		Group:   "clusterregistry.k8s.io",
+		Version: "v1alpha1",
+		Kind:    "Cluster",
+	}
+	DeployerPlacementTarget = &metav1.GroupVersionResource{
+		Group:    "core.hybridapp.io",
+		Version:  "v1alpha1",
+		Resource: "deployers",
+	}
+	DeployerGVK = &metav1.GroupVersionKind{
+		Group:   "core.hybridapp.io",
+		Version: "v1alpha1",
+		Kind:    "Deployer",
+	}
+)
+
+const (
+	// HybridDiscoveryEnabled indicates whether the discovery is enabled for a resource managed by this deployable
+	HybridDiscoveryEnabled = "enabled"
+
+	// HybridDiscoveryCompleted indicates whether the discovery has been completed for resource controlled by this deployable
+	HybridDiscoveryCompleted = "completed"
 )
 
 type HybridTemplate struct {

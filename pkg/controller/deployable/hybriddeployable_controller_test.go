@@ -34,6 +34,7 @@ import (
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
@@ -70,13 +71,13 @@ var (
 
 	deployerType = "configmap"
 
-	deployer = &appv1alpha1.Deployer{
+	deployer = &prulev1alpha1.Deployer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deployerKey.Name,
 			Namespace: deployerKey.Namespace,
 			Labels:    map[string]string{"deployer-type": deployerType},
 		},
-		Spec: appv1alpha1.DeployerSpec{
+		Spec: prulev1alpha1.DeployerSpec{
 			Type: deployerType,
 		},
 	}
@@ -86,20 +87,20 @@ var (
 		Namespace: clusterNamespace,
 	}
 
-	deployerInSetSpec = appv1alpha1.DeployerSpecDescriptor{
+	deployerInSetSpec = prulev1alpha1.DeployerSpecDescriptor{
 		Key: "default/mydplyr",
-		Spec: appv1alpha1.DeployerSpec{
+		Spec: prulev1alpha1.DeployerSpec{
 			Type: deployerType,
 		},
 	}
 
-	deployerSet = &appv1alpha1.DeployerSet{
+	deployerSet = &prulev1alpha1.DeployerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
 			Namespace: deployerSetKey.Namespace,
 		},
-		Spec: appv1alpha1.DeployerSetSpec{
-			Deployers: []appv1alpha1.DeployerSpecDescriptor{
+		Spec: prulev1alpha1.DeployerSetSpec{
+			Deployers: []prulev1alpha1.DeployerSpecDescriptor{
 				deployerInSetSpec,
 			},
 		},

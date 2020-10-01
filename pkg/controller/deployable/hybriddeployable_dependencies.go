@@ -31,6 +31,7 @@ import (
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 )
 
 func (r *ReconcileHybridDeployable) getDependenciesObjectReferences(instance *appv1alpha1.Deployable) []corev1.ObjectReference {
@@ -158,7 +159,7 @@ func (r *ReconcileHybridDeployable) getDependenciesObjects(instance *appv1alpha1
 	return depobjects
 }
 
-func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1alpha1.Deployable, deployer *appv1alpha1.Deployer,
+func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	children map[schema.GroupVersionResource]gvrChildrenMap, templateobj *unstructured.Unstructured) {
 	if deployer == nil {
 		return
