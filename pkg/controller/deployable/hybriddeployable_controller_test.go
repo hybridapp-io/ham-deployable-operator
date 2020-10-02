@@ -454,7 +454,6 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	instance := hybridDeployable.DeepCopy()
 	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
-
 	deployableList := &dplv1.DeployableList{}
 	g.Expect(c.List(context.TODO(), deployableList, client.InNamespace(deployerNamespace))).To(Succeed())
 	g.Expect(deployableList.Items).To(HaveLen(oneitem))
