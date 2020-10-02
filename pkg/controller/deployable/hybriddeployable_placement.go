@@ -221,10 +221,6 @@ func (r *ReconcileHybridDeployable) getPlacementDecisions(instance *corev1alpha1
 
 		err := r.Get(context.TODO(), pkey, pp)
 		if err != nil {
-			if errors.IsNotFound(err) {
-				klog.Warning("Failed to locate placement reference ", pref.Namespace+"/"+pref.Name)
-				return nil, nil
-			}
 			oldpr := &placementv1.PlacementRule{}
 			err := r.Get(context.TODO(), pkey, oldpr)
 			if err != nil {
@@ -244,7 +240,6 @@ func (r *ReconcileHybridDeployable) getPlacementDecisions(instance *corev1alpha1
 				clusters[index] = *cluster
 			}
 			return clusters, nil
-
 		}
 		return pp.Status.Decisions, nil
 	}

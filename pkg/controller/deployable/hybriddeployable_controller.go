@@ -135,6 +135,26 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(
 		&source.Kind{
+			Type: &prulev1alpha1.PlacementRule{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: &placementruleMapper{mgr.GetClient()},
+		},
+		predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				newpr := e.ObjectNew.(*prulev1alpha1.PlacementRule)
+				oldpr := e.ObjectOld.(*prulev1alpha1.PlacementRule)
+
+				return !reflect.DeepEqual(oldpr.Status, newpr.Status)
+			},
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(
+		&source.Kind{
 			Type: &placementv1.PlacementRule{}},
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: &placementruleMapper{mgr.GetClient()},
@@ -333,7 +353,13 @@ func (mapper *placementruleMapper) Map(obj handler.MapObject) []reconcile.Reques
 				Version: "v1alpha1",
 				Kind:    "PlacementRule",
 			}
-			if !pref.GroupVersionKind().Empty() && pref.GroupVersionKind().String() != cp4mcmprgvk.String() {
+			hybridprgvk := schema.GroupVersionKind{
+				Group:   "core.hybridapp.io",
+				Version: "v1alpha1",
+				Kind:    "PlacementRule",
+			}
+			if !pref.GroupVersionKind().Empty() && pref.GroupVersionKind().String() != cp4mcmprgvk.String() &&
+				pref.GroupVersionKind().String() != hybridprgvk.String() {
 				continue
 			}
 
