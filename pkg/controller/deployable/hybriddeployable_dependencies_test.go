@@ -141,7 +141,7 @@ func TestDependency(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
 	stopMgr, mgrStopped := StartTestManager(mgr, g)
@@ -233,7 +233,7 @@ func TestHybridDeployableDependency(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
 	stopMgr, mgrStopped := StartTestManager(mgr, g)

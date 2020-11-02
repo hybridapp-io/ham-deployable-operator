@@ -127,13 +127,20 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 
 	gvk := obj.GetObjectKind().GroupVersionKind()
 
-	gvr, err := r.registerGVK(gvk)
-	if err != nil {
-		return err
-	}
-
+	var gvr schema.GroupVersionResource
 	if !hdplutils.IsInClusterDeployer(deployer) {
 		gvr = deployableGVR
+	} else {
+		localgvr, err := r.registerGVK(gvk)
+		if err != nil {
+			klog.Error("Failed to obtain gvr for gvk ", gvk, " with error: ", err)
+			return err
+		}
+		gvr = localgvr
+	}
+
+	if err != nil {
+		return err
 	}
 
 	gvrchildren := children[gvr]
@@ -247,6 +254,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 	obj := &unstructured.Unstructured{}
 	obj.SetUnstructuredContent(uc)
 	gvk := obj.GetObjectKind().GroupVersionKind()
+
 	gvr, err := r.registerGVK(gvk)
 
 	if err != nil {
@@ -372,10 +380,15 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	templateobj *unstructured.Unstructured) (metav1.Object, error) {
 	gvk := templateobj.GetObjectKind().GroupVersionKind()
-	gvr, err := r.registerGVK(gvk)
-	if err != nil {
-		klog.Error("Failed to obtain right gvr for gvk ", gvk, " with error: ", err)
-		return nil, err
+
+	var gvr schema.GroupVersionResource
+	if hdplutils.IsInClusterDeployer(deployer) {
+		localgvr, err := r.registerGVK(gvk)
+		if err != nil {
+			klog.Error("Failed to obtain gvr for gvk ", gvk, " with error: ", err)
+			return nil, err
+		}
+		gvr = localgvr
 	}
 
 	obj := templateobj.DeepCopy()
