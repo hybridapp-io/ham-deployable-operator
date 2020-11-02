@@ -126,7 +126,6 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 	}
 
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	klog.Info("deployResourceByDeployer >>>>>>> ", gvk, "  ", hdplutils.IsInClusterDeployer(deployer))
 
 	var gvr schema.GroupVersionResource
 	if !hdplutils.IsInClusterDeployer(deployer) {
@@ -139,7 +138,6 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 		}
 		gvr = localgvr
 	}
-	klog.Info(" >>>>> active map ", r.activeGVRMap)
 
 	if err != nil {
 		return err
@@ -256,10 +254,8 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 	obj := &unstructured.Unstructured{}
 	obj.SetUnstructuredContent(uc)
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	klog.Info("updateObjectForDeployer >>>>>>> ", gvk, "  ", hdplutils.IsInClusterDeployer(deployer))
 
 	gvr, err := r.registerGVK(gvk)
-	klog.Info(" >>>>> ", r.activeGVRMap)
 
 	if err != nil {
 		klog.Error("Failed to obtain right gvr for gvk ", gvk, " with error: ", err)
@@ -384,7 +380,6 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	templateobj *unstructured.Unstructured) (metav1.Object, error) {
 	gvk := templateobj.GetObjectKind().GroupVersionKind()
-	klog.Info("createObjectForDeployer >>>>>>> ", gvk, "  ", hdplutils.IsInClusterDeployer(deployer))
 
 	var gvr schema.GroupVersionResource
 	if hdplutils.IsInClusterDeployer(deployer) {
@@ -395,7 +390,6 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 		}
 		gvr = localgvr
 	}
-	klog.Info(" >>>>> active map ", r.activeGVRMap)
 
 	obj := templateobj.DeepCopy()
 	// actual object to be created could be template object or a deployable wrapping template object
