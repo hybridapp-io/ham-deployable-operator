@@ -660,11 +660,11 @@ func TestDeployWithUnknownObjectCRD(t *testing.T) {
 	}
 	unstructuredPayloadGateway := &unstructured.Unstructured{}
 	gatewayDeployerType := deployerType
-	gatewayApiVersion := "networking.istio.io/v1alpha3"
+	gatewayAPIVersion := "networking.istio.io/v1alpha3"
 	gatewayKind := "Gateway"
 	gatewayName := "trainticket-gateway"
 
-	unstructuredPayloadGateway.SetAPIVersion(gatewayApiVersion)
+	unstructuredPayloadGateway.SetAPIVersion(gatewayAPIVersion)
 	unstructuredPayloadGateway.SetKind(gatewayKind)
 	unstructuredPayloadGateway.SetName(gatewayName)
 	err := unstructured.SetNestedField(unstructuredPayloadGateway.Object, "ingressgateway", "spec", "selector", "istio")
@@ -763,8 +763,8 @@ func TestDeployWithUnknownObjectCRD(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(gatewayExpectedRequest)))
 	time.Sleep(optime)
 	select {
-	case error := <-errors:
-		klog.Error(error)
+	case recError := <-errors:
+		klog.Error(recError)
 		t.Fail()
 	default:
 	}
