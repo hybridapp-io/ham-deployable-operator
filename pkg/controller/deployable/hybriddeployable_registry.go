@@ -186,7 +186,7 @@ func (r *hybridDeployableRegistry) stop() {
 func (r *hybridDeployableRegistry) registerGVK(gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
 	gvr, ok := r.gvkGVRMap[gvk]
 	if !ok {
-		return schema.GroupVersionResource{}, errors.NewBadRequest(gvk.String() + "is not discovered")
+		return schema.GroupVersionResource{}, errors.NewBadRequest(gvk.String() + " is not discovered")
 	}
 
 	_, ok = r.activeGVRMap[gvr]
