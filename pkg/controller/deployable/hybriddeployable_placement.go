@@ -266,7 +266,8 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 
 		gvkchildren := make(map[types.NamespacedName]metav1.Object)
 
-		for _, obj := range objlist.Items {
+		for i := range objlist.Items {
+			obj := objlist.Items[i]
 			annotations := obj.GetAnnotations()
 			if annotations == nil {
 				continue
