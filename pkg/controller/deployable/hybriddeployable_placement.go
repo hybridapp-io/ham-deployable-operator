@@ -266,7 +266,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 
 		gvkchildren := make(map[types.NamespacedName]metav1.Object)
 
-		for _, obj := range objlist.Items {
+		for i, obj := range objlist.Items {
 			annotations := obj.GetAnnotations()
 			if annotations == nil {
 				continue
@@ -274,7 +274,7 @@ func (r *ReconcileHybridDeployable) getChildren(request types.NamespacedName) (m
 
 			if host, ok := annotations[corev1alpha1.HostingHybridDeployable]; ok {
 				if host == request.String() {
-					key := r.genObjectIdentifier(&obj)
+					key := r.genObjectIdentifier(&objlist.Items[i])
 
 					if _, ok := gvkchildren[key]; ok {
 						klog.Info("Deleting redundant deployed object", obj.GetNamespace(), "/", obj.GetName())
