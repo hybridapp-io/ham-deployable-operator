@@ -46,6 +46,15 @@ const (
 	packageDetailLogLevel = 5
 )
 
+var (
+	rhacmEnabled       = false
+	rhacmDeployableGVK = schema.GroupVersionKind{
+		Group:   "apps.open-cluster-management.io",
+		Version: "v1",
+		Kind:    "Deployable",
+	}
+)
+
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -62,6 +71,12 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	reconciler := &ReconcileHybridDeployable{Client: mgr.GetClient()}
 
 	err := reconciler.initRegistry(mgr.GetConfig())
+	if _, ok := reconciler.gvkGVRMap[rhacmDeployableGVK]; ok {
+		rhacmEnabled = true
+		klog.Info("RedHat Advanced Cluster Management(RHACM) is enabled in this environment")
+	} else {
+		klog.Info("RedHat Advanced Cluster Management(RHACM) is not enabled in this environment")
+	}
 	if err != nil {
 		klog.Error("Failed to initialize hybrid deployable registry with error:", err)
 		return nil
@@ -78,6 +93,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+
 	// Create a new controller
 	c, err := controller.New("hybriddeployable-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -153,83 +169,86 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	err = c.Watch(
-		&source.Kind{
-			Type: &placementv1.PlacementRule{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: &placementruleMapper{mgr.GetClient()},
-		},
-		predicate.Funcs{
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				newpr := e.ObjectNew.(*placementv1.PlacementRule)
-				oldpr := e.ObjectOld.(*placementv1.PlacementRule)
-
-				return !reflect.DeepEqual(oldpr.Status, newpr.Status)
+	// watch RHACM placement rules only if RHACM is installed
+	if rhacmEnabled {
+		err = c.Watch(
+			&source.Kind{
+				Type: &placementv1.PlacementRule{}},
+			&handler.EnqueueRequestsFromMapFunc{
+				ToRequests: &placementruleMapper{mgr.GetClient()},
 			},
-		},
-	)
+			predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					newpr := e.ObjectNew.(*placementv1.PlacementRule)
+					oldpr := e.ObjectOld.(*placementv1.PlacementRule)
 
-	if err != nil {
-		return err
-	}
+					return !reflect.DeepEqual(oldpr.Status, newpr.Status)
+				},
+			},
+		)
 
-	// watch on hybrid-discovery annotation of deployables
-	err = c.Watch(
-		&source.Kind{
-			Type: &dplv1.Deployable{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: &deployableMapper{mgr.GetClient()},
-		},
-		predicate.Funcs{
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				newDeployable := e.ObjectNew.(*dplv1.Deployable)
-				oldDeployable := e.ObjectOld.(*dplv1.Deployable)
-				// discovery annotation = completed on new
-				if _, completedNew := newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
-					newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
-					// discovery annotation != completed on old
-					if _, completedOld := oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; !completedOld ||
-						oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] != appv1alpha1.HybridDiscoveryCompleted {
+		if err != nil {
+			return err
+		}
+
+		// watch on hybrid-discovery annotation of deployables, but only if RHACM is installed
+		err = c.Watch(
+			&source.Kind{
+				Type: &dplv1.Deployable{}},
+			&handler.EnqueueRequestsFromMapFunc{
+				ToRequests: &deployableMapper{mgr.GetClient()},
+			},
+			predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					newDeployable := e.ObjectNew.(*dplv1.Deployable)
+					oldDeployable := e.ObjectOld.(*dplv1.Deployable)
+					// discovery annotation = completed on new
+					if _, completedNew := newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
+						newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
+						// discovery annotation != completed on old
+						if _, completedOld := oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; !completedOld ||
+							oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] != appv1alpha1.HybridDiscoveryCompleted {
+							// hosted deployable
+							if _, hostedNew := newDeployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
+								return true
+							}
+						}
+					}
+					return false
+				},
+				CreateFunc: func(e event.CreateEvent) bool {
+					deployable := e.Object.(*dplv1.Deployable)
+					if _, completedNew := deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
+						deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
 						// hosted deployable
-						if _, hostedNew := newDeployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
+						if _, hostedNew := deployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
 							return true
 						}
 					}
-				}
-				return false
+					return false
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return false
+				},
+				GenericFunc: func(e event.GenericEvent) bool {
+					return false
+				},
 			},
-			CreateFunc: func(e event.CreateEvent) bool {
-				deployable := e.Object.(*dplv1.Deployable)
-				if _, completedNew := deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
-					deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
-					// hosted deployable
-					if _, hostedNew := deployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
-						return true
-					}
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-			GenericFunc: func(e event.GenericEvent) bool {
-				return false
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
+		)
+		if err != nil {
+			return err
+		}
 
-	err = c.Watch(
-		&source.Kind{
-			Type: &dplv1.Deployable{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: &outputMapper{mgr.GetClient()},
-		},
-	)
-	if err != nil {
-		return err
+		err = c.Watch(
+			&source.Kind{
+				Type: &dplv1.Deployable{}},
+			&handler.EnqueueRequestsFromMapFunc{
+				ToRequests: &outputMapper{mgr.GetClient()},
+			},
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = c.Watch(
