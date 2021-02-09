@@ -33,8 +33,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -87,7 +89,7 @@ func TestCreateObjectChild(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -219,7 +221,7 @@ func TestUpdateObjectChild(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -321,7 +323,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -437,7 +439,7 @@ func TestUpdateTemplateNamespace(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -560,7 +562,7 @@ func TestUpdateDiscoveryCompleted(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -648,4 +650,131 @@ func TestUpdateDiscoveryCompleted(t *testing.T) {
 	json.Unmarshal(instance.Spec.HybridTemplates[0].Template.Raw, uc)
 	payload, _, _ := unstructured.NestedMap(uc.Object, "data")
 	g.Expect(payload["myconfig"].(string)).To(Equal(payloadFoo.Data["myconfig"]))
+}
+
+func TestDeployWithUnknownObjectCRD(t *testing.T) {
+	g := NewWithT(t)
+
+	gatewaySelectorSpec := map[string]string{
+		"istio": "ingressgateway",
+	}
+	unstructuredPayloadGateway := &unstructured.Unstructured{}
+	gatewayDeployerType := deployerType
+	gatewayAPIVersion := "networking.istio.io/v1alpha3"
+	gatewayKind := "Gateway"
+	gatewayName := "trainticket-gateway"
+
+	unstructuredPayloadGateway.SetAPIVersion(gatewayAPIVersion)
+	unstructuredPayloadGateway.SetKind(gatewayKind)
+	unstructuredPayloadGateway.SetName(gatewayName)
+	err := unstructured.SetNestedField(unstructuredPayloadGateway.Object, "ingressgateway", "spec", "selector", "istio")
+	g.Expect(err).NotTo(HaveOccurred())
+
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
+		DeployerType: gatewayDeployerType,
+		Template: &runtime.RawExtension{
+			Object: unstructuredPayloadGateway,
+		},
+	}
+
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateInHybridDeployable,
+		},
+		Placement: &appv1alpha1.HybridPlacement{
+			PlacementRef: &corev1.ObjectReference{
+				Name:      placementRuleName,
+				Namespace: placementRuleNamespace,
+			},
+		},
+	}
+
+	var c client.Client
+
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = mgr.GetClient()
+
+	rec := newReconciler(mgr)
+	recFn, requests, errors := SetupTestReconcile(rec)
+
+	g.Expect(add(mgr, recFn)).To(Succeed())
+
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	prule := placementRule.DeepCopy()
+	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
+
+	defer c.Delete(context.TODO(), prule)
+
+	dplyr := deployer.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
+
+	defer c.Delete(context.TODO(), dplyr)
+
+	dset := deployerSet.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dset)).To(Succeed())
+
+	defer c.Delete(context.TODO(), dset)
+
+	clstr := cluster.DeepCopy()
+	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
+
+	defer c.Delete(context.TODO(), clstr)
+
+	//Pull back the placementrule and update the status subresource
+	pr := &placementv1.PlacementRule{}
+	g.Expect(c.Get(context.TODO(), placementRuleKey, pr)).To(Succeed())
+
+	decisionInPlacement := placementv1.PlacementDecision{
+		ClusterName:      clusterName,
+		ClusterNamespace: clusterNamespace,
+	}
+
+	newpd := []placementv1.PlacementDecision{
+		decisionInPlacement,
+	}
+	pr.Status.Decisions = newpd
+	g.Expect(c.Status().Update(context.TODO(), pr.DeepCopy())).To(Succeed())
+
+	defer c.Delete(context.TODO(), pr)
+
+	// empty hdpl
+	instance := hybridDeployable.DeepCopy()
+	instance.SetName("gateway-hdpl")
+	gatewayDeployableKey := types.NamespacedName{
+		Name:      "gateway-hdpl",
+		Namespace: hybridDeployableNamespace,
+	}
+	gatewayExpectedRequest := reconcile.Request{NamespacedName: gatewayDeployableKey}
+
+	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
+
+	defer c.Delete(context.TODO(), instance)
+
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(gatewayExpectedRequest)))
+	time.Sleep(optime)
+	select {
+	case recError := <-errors:
+		klog.Error(recError)
+		t.Fail()
+	default:
+	}
+
+	//Expect payload is updated on hybriddeployable template update
+	instance = &appv1alpha1.Deployable{}
+	g.Expect(c.Get(context.TODO(), gatewayDeployableKey, instance)).To(Succeed())
+
+	uc := &unstructured.Unstructured{}
+	json.Unmarshal(instance.Spec.HybridTemplates[0].Template.Raw, uc)
+	payload, _, _ := unstructured.NestedMap(uc.Object, "spec", "selector")
+	g.Expect(payload["istio"].(string)).To(Equal(gatewaySelectorSpec["istio"]))
 }
