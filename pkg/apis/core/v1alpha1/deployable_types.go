@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	dplv1alpha1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -96,8 +96,8 @@ type DeployableSpec struct {
 }
 
 type PerDeployerStatus struct {
-	dplv1alpha1.ResourceUnitStatus `json:",inline"`
-	Outputs                        []corev1.ObjectReference `json:"outputs,omitempty"`
+	dplv1.ResourceUnitStatus `json:",inline"`
+	Outputs                  []corev1.ObjectReference `json:"outputs,omitempty"`
 }
 
 // HybridDeployableStatus defines the observed state of HybridDeployable
