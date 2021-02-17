@@ -20,6 +20,7 @@ import (
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
+	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
@@ -32,6 +33,7 @@ import (
 
 var (
 	hdplName      = "output"
+	rhName        = "rhdpl"
 	hdplNamespace = "output-ns"
 	hdplOutputNS  = corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -45,6 +47,15 @@ var (
 			Namespace: hdplNamespace,
 		},
 		Spec: appv1alpha1.DeployableSpec{},
+	}
+
+	rhDeployable = dplv1.Deployable{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        rhName,
+			Namespace:   hdplNamespace,
+			Annotations: map[string]string{appv1alpha1.HostingHybridDeployable: hdDeployable.Namespace + "/" + hdDeployable.Name},
+		},
+		Spec: dplv1.DeployableSpec{},
 	}
 
 	payloadConfigMap = &corev1.ConfigMap{
@@ -296,4 +307,109 @@ func TestDeployableStatus(t *testing.T) {
 	c.Delete(context.TODO(), hdpl)
 	g.Eventually(requests, timeout, interval).Should(Receive())
 
+}
+
+func TestDeployableStatusPropogation(t *testing.T) {
+	g := NewWithT(t)
+	hdDeployable.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateConfigMap,
+			templateEndpoints,
+			templateSecret,
+		},
+	}
+
+	var c client.Client
+
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = mgr.GetClient()
+
+	rec := newReconciler(mgr)
+	recFn, requests, _ := SetupTestReconcile(rec)
+	g.Expect(add(mgr, recFn)).To(Succeed())
+
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	// configmap deployer
+	deployerConfigMap := fooDeployer.DeepCopy()
+	deployerConfigMap.Name = "configmap"
+	deployerConfigMap.Spec.Type = "configmap"
+
+	deployerConfigMap.Spec.Scope = apiextensions.ClusterScoped
+	deployerConfigMap.Spec.Capabilities = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"configmaps"},
+			Verbs:     []string{"*"},
+		},
+	}
+	g.Expect(c.Create(context.TODO(), deployerConfigMap)).NotTo(HaveOccurred())
+	defer c.Delete(context.TODO(), deployerConfigMap)
+
+	//Expect payload is created in payload namespace on hdDeployable create
+	hdpl := hdDeployable.DeepCopy()
+	hdpl.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      deployerConfigMap.Name,
+				Namespace: deployerConfigMap.Namespace,
+			},
+		},
+	}
+
+	g.Expect(c.Create(context.TODO(), hdpl)).To(Succeed())
+
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	rhdpl := rhDeployable.DeepCopy()
+	rhdpl.Spec.Template = &runtime.RawExtension{
+		Object: payloadConfigMap,
+	}
+	rhdpl.Status.Phase = "Deployed"
+
+	g.Expect(c.Create(context.TODO(), rhdpl)).To(Succeed())
+
+	// hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	dpls := &dplv1.DeployableList{}
+	g.Expect(c.List(context.TODO(), dpls)).To(Succeed())
+	g.Expect(dpls.Items).To(HaveLen(oneitem))
+
+	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
+
+	g.Expect((hdpl.Status.PerDeployerStatus)).ToNot(BeNil())
+
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name])).ToNot(BeNil())
+
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name]).LastUpdateTime).ToNot(BeNil())
+	//firstUpdateTime := hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].LastUpdateTime
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].APIVersion)).To(Equal("v1"))
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Kind)).To(Equal("ConfigMap"))
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Name)).To(Equal("payload"))
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Namespace)).To(Equal(fooDeployer.Namespace))
+
+	rhdpl.Status.Phase = "Failed"
+
+	g.Expect(c.Update(context.TODO(), rhdpl)).To(Succeed())
+	// wait for update
+	//g.Eventually(requests, timeout, interval).Should(Receive())
+
+	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].ResourceUnitStatus.Phase)).ToNot(BeNil())
+	g.Expect(string(hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].ResourceUnitStatus.Phase)).To(Equal("Failed"))
+
+	c.Delete(context.TODO(), hdpl)
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	c.Delete(context.TODO(), rhdpl)
+	g.Eventually(requests, timeout, interval).Should(Receive())
 }
