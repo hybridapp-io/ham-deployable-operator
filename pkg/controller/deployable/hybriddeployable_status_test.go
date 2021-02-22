@@ -21,10 +21,12 @@ import (
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -309,13 +311,35 @@ func TestDeployableStatus(t *testing.T) {
 
 }
 
-func TestDeployableStatusPropogation(t *testing.T) {
+func TestDeployableStatusPropagation(t *testing.T) {
 	g := NewWithT(t)
-	hdDeployable.Spec = appv1alpha1.DeployableSpec{
+
+	payloadIncomplete := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "payload",
+			Namespace: "payload",
+		},
+	}
+	templateInHybridDeployable := appv1alpha1.HybridTemplate{
+		DeployerType: deployerType,
+		Template: &runtime.RawExtension{
+			Object: payloadIncomplete,
+		},
+	}
+
+	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
 		HybridTemplates: []appv1alpha1.HybridTemplate{
-			templateConfigMap,
-			templateEndpoints,
-			templateSecret,
+			templateInHybridDeployable,
+		},
+		Placement: &appv1alpha1.HybridPlacement{
+			PlacementRef: &corev1.ObjectReference{
+				Name:      placementRuleName,
+				Namespace: placementRuleNamespace,
+			},
 		},
 	}
 
@@ -330,6 +354,7 @@ func TestDeployableStatusPropogation(t *testing.T) {
 
 	rec := newReconciler(mgr)
 	recFn, requests, _ := SetupTestReconcile(rec)
+
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
 	stopMgr, mgrStopped := StartTestManager(mgr, g)
@@ -339,77 +364,94 @@ func TestDeployableStatusPropogation(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// configmap deployer
-	deployerConfigMap := fooDeployer.DeepCopy()
-	deployerConfigMap.Name = "configmap"
-	deployerConfigMap.Spec.Type = "configmap"
+	prule := placementRule.DeepCopy()
+	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
 
-	deployerConfigMap.Spec.Scope = apiextensions.ClusterScoped
-	deployerConfigMap.Spec.Capabilities = []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{""},
-			Resources: []string{"configmaps"},
-			Verbs:     []string{"*"},
-		},
+	defer c.Delete(context.TODO(), prule)
+
+	dplyr := deployer.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
+
+	defer c.Delete(context.TODO(), dplyr)
+
+	dset := deployerSet.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dset)).To(Succeed())
+
+	defer c.Delete(context.TODO(), dset)
+
+	clstr := cluster.DeepCopy()
+	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
+
+	defer c.Delete(context.TODO(), clstr)
+
+	//Pull back the placementrule and update the status subresource
+	pr := &placementv1.PlacementRule{}
+	g.Expect(c.Get(context.TODO(), placementRuleKey, pr)).To(Succeed())
+
+	decisionInPlacement := placementv1.PlacementDecision{
+		ClusterName:      clusterName,
+		ClusterNamespace: clusterNamespace,
 	}
-	g.Expect(c.Create(context.TODO(), deployerConfigMap)).NotTo(HaveOccurred())
-	defer c.Delete(context.TODO(), deployerConfigMap)
 
-	//Expect payload is created in payload namespace on hdDeployable create
-	hdpl := hdDeployable.DeepCopy()
-	hdpl.Spec.Placement = &appv1alpha1.HybridPlacement{
-		Deployers: []corev1.ObjectReference{
-			{
-				Name:      deployerConfigMap.Name,
-				Namespace: deployerConfigMap.Namespace,
-			},
-		},
+	newpd := []placementv1.PlacementDecision{
+		decisionInPlacement,
+	}
+	pr.Status.Decisions = newpd
+	g.Expect(c.Status().Update(context.TODO(), pr.DeepCopy())).To(Succeed())
+
+	defer c.Delete(context.TODO(), pr)
+
+	instance := hybridDeployable.DeepCopy()
+	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
+
+	defer c.Delete(context.TODO(), instance)
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
+
+	//status update reconciliation
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
+
+	// connect the deployable with a payload and set its discovery annotation to enabled
+	keylabel := map[string]string{
+		appv1alpha1.HostingHybridDeployable: instance.Namespace + "/" + instance.Name,
 	}
 
-	g.Expect(c.Create(context.TODO(), hdpl)).To(Succeed())
-
-	g.Eventually(requests, timeout, interval).Should(Receive())
-
-	rhdpl := rhDeployable.DeepCopy()
-	rhdpl.Spec.Template = &runtime.RawExtension{
-		Object: payloadConfigMap,
-	}
-	rhdpl.Status.Phase = "Deployed"
-
-	g.Expect(c.Create(context.TODO(), rhdpl)).To(Succeed())
-
-	// hdpl status update
-	g.Eventually(requests, timeout, interval).Should(Receive())
-
+	// Fetch deployables
 	dpls := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), dpls)).To(Succeed())
+	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
 	g.Expect(dpls.Items).To(HaveLen(oneitem))
 
-	c.Get(context.TODO(), types.NamespacedName{Name: hdpl.Name, Namespace: hdpl.Namespace}, hdpl)
+	dpl := dpls.Items[0]
+	annotations := dpl.GetAnnotations()
+	annotations[appv1alpha1.AnnotationHybridDiscovery] = appv1alpha1.HybridDiscoveryCompleted
 
-	g.Expect((hdpl.Status.PerDeployerStatus)).ToNot(BeNil())
+	g.Expect(annotations[appv1alpha1.HostingHybridDeployable]).To(Equal(instance.Namespace + "/" + instance.Name))
 
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name])).ToNot(BeNil())
+	// Set status to Failed
+	dpl.Status.Phase = "Failed"
 
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name]).LastUpdateTime).ToNot(BeNil())
-	//firstUpdateTime := hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].LastUpdateTime
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].APIVersion)).To(Equal("v1"))
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Kind)).To(Equal("ConfigMap"))
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Name)).To(Equal("payload"))
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].Outputs[0].Namespace)).To(Equal(fooDeployer.Namespace))
+	dpl.SetAnnotations(annotations)
+	dpl.Spec = dplv1.DeployableSpec{
+		Template: &runtime.RawExtension{
+			Object: payloadFoo,
+		},
+	}
 
-	rhdpl.Status.Phase = "Failed"
+	// Update deployable & status
+	g.Expect(c.Update(context.TODO(), &dpl)).To(Succeed())
 
-	g.Expect(c.Update(context.TODO(), rhdpl)).To(Succeed())
-	// wait for update
-	//g.Eventually(requests, timeout, interval).Should(Receive())
+	g.Expect(c.Status().Update(context.TODO(), &dpl)).To(Succeed())
 
-	g.Expect((hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].ResourceUnitStatus.Phase)).ToNot(BeNil())
-	g.Expect(string(hdpl.Status.PerDeployerStatus["default/"+deployerConfigMap.Name].ResourceUnitStatus.Phase)).To(Equal("Failed"))
+	// expect hdpl reconciliation to happen
+	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
-	c.Delete(context.TODO(), hdpl)
-	g.Eventually(requests, timeout, interval).Should(Receive())
+	// Fetch deployable again and ensure status has been updated
+	dpls = &dplv1.DeployableList{}
+	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	g.Expect(dpls.Items).To(HaveLen(oneitem))
+	dpl = dpls.Items[0]
+	g.Expect(string(dpl.Status.Phase)).To(Equal("Failed"))
 
-	c.Delete(context.TODO(), rhdpl)
-	g.Eventually(requests, timeout, interval).Should(Receive())
+	// Phase should be updated on hybrid deployable
+	g.Expect((hybridDeployable.Status.PerDeployerStatus["default/"+payloadIncomplete.Name].ResourceUnitStatus.Phase)).ToNot(BeNil())
+	g.Expect(string(hybridDeployable.Status.PerDeployerStatus["default/"+payloadIncomplete.Name].ResourceUnitStatus.Phase)).To(Equal("Failed"))
 }
