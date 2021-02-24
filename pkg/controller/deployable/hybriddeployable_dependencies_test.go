@@ -19,8 +19,11 @@ import (
 	"testing"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
+	hdplv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
+	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,12 +36,16 @@ import (
 const (
 	CONFIGMAP = "configmap"
 	ENDPOINT  = "endpoint"
+	RHACM     = "kubernetes"
 )
 
 var (
-	hdplDepName      = "dependency"
-	hdplDepNamespace = "dependency-ns"
-
+	hdplDepName            = "dependency"
+	hdplDepNamespace       = "dependency-ns"
+	applicationName        = "wordpress-01"
+	appLabelSelector       = "app.kubernetes.io/name"
+	mcServiceName          = "my-svc"
+	mcName                 = "dependency-ns"
 	hdplDependentName      = "dependent"
 	hdplDependentNamespace = "dependent-ns"
 
@@ -61,7 +68,57 @@ var (
 		},
 		Spec: appv1alpha1.DeployableSpec{},
 	}
-
+	mcService = &v1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        mcServiceName,
+			Namespace:   fooDeployer.Namespace,
+			Annotations: map[string]string{appLabelSelector: applicationName},
+			Labels:      map[string]string{appLabelSelector: applicationName},
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Port: 3306,
+				},
+			},
+		},
+	}
+	svcDeployable = &dplv1.Deployable{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployable",
+			APIVersion: "apps.open-cluster-management.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcServiceName,
+			Namespace: fooDeployer.Namespace,
+			Annotations: map[string]string{
+				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+			},
+			Labels: map[string]string{
+				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+			},
+		},
+		Spec: dplv1.DeployableSpec{
+			Template: &runtime.RawExtension{
+				Object: mcService,
+			},
+		},
+	}
+	svcDeployableRef = &corev1.ObjectReference{
+		Name:       mcServiceName,
+		Kind:       "Deployable",
+		APIVersion: "apps.open-cluster-management.io/v1",
+	}
+	templateRHACM = appv1alpha1.HybridTemplate{
+		DeployerType: RHACM,
+		Template: &runtime.RawExtension{
+			Object: svcDeployable,
+		},
+	}
 	cm = &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -308,4 +365,66 @@ func TestHybridDeployableDependency(t *testing.T) {
 	c.Delete(context.TODO(), dependencyHDPL)
 	g.Eventually(requests, timeout, interval).Should(Receive())
 
+}
+
+func TestObtainDeployableDependencyError(t *testing.T) {
+	g := NewWithT(t)
+	hdplDependent := &appv1alpha1.Deployable{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hdplDependentName,
+			Namespace: hdplDependentNamespace,
+		},
+		Spec: appv1alpha1.DeployableSpec{
+			HybridTemplates: []appv1alpha1.HybridTemplate{
+				templateRHACM,
+			},
+		},
+	}
+	var c client.Client
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+	c = mgr.GetClient()
+	rec := newReconciler(mgr)
+	recFn, requests, _ := SetupTestReconcile(rec)
+	g.Expect(add(mgr, recFn)).To(Succeed())
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+	dependentDeployer := fooDeployer.DeepCopy()
+	dependentDeployer.Name = RHACM
+	dependentDeployer.Namespace = fooDeployer.Namespace
+	dependentDeployer.Spec.Type = RHACM
+	dependentDeployer.Spec.Scope = apiextensions.ClusterScoped
+	dependentDeployer.Spec.Capabilities = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"deployables"},
+			Verbs:     []string{"*"},
+		},
+	}
+	g.Expect(c.Create(context.TODO(), dependentDeployer)).NotTo(HaveOccurred())
+	defer c.Delete(context.TODO(), deployer)
+	dependentHDPL := hdplDependent.DeepCopy()
+	dependentHDPL.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      dependentDeployer.Name,
+				Namespace: dependentDeployer.Namespace,
+			},
+		},
+	}
+	dependentHDPL.Spec.Dependencies = []corev1.ObjectReference{
+		*svcDeployableRef,
+	}
+	g.Expect(c.Create(context.TODO(), dependentHDPL)).To(Succeed())
+	g.Eventually(requests, timeout, interval).Should(Receive())
+	//  hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+	g.Expect(c.Get(context.TODO(), types.NamespacedName{Name: dependentHDPL.Name, Namespace: dependentHDPL.Namespace}, dependentHDPL)).To(Succeed())
+	c.Delete(context.TODO(), dependentHDPL)
+	g.Eventually(requests, timeout, interval).Should(Receive())
 }
