@@ -21,14 +21,15 @@ import (
 	"sync"
 	"testing"
 
+	apis "github.com/hybridapp-io/ham-deployable-operator/pkg/apis"
 	"github.com/onsi/gomega"
+	managedclusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	apis "github.com/hybridapp-io/ham-deployable-operator/pkg/apis"
 )
 
 var cfg *rest.Config
@@ -44,6 +45,10 @@ func TestMain(m *testing.M) {
 	err := apis.AddToScheme(scheme.Scheme)
 	if err != nil {
 		log.Fatal(err)
+	}
+	err = managedclusterv1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		klog.Fatal(err)
 	}
 
 	if cfg, err = t.Start(); err != nil {
