@@ -76,13 +76,32 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        mcServiceName,
 			Namespace:   fooDeployer.Namespace,
+			Annotations: map[string]string{appLabelSelector: applicationName + "2"},
+			Labels:      map[string]string{appLabelSelector: applicationName + "2"},
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Port: 3306,
+				},
+			},
+		},
+	}
+	mcService2 = &v1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        mcServiceName + "2",
+			Namespace:   fooDeployer.Namespace,
 			Annotations: map[string]string{appLabelSelector: applicationName},
 			Labels:      map[string]string{appLabelSelector: applicationName},
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
 				{
-					Port: 3306,
+					Port: 3307,
 				},
 			},
 		},
@@ -108,15 +127,49 @@ var (
 			},
 		},
 	}
+	svcDeployable2 = &dplv1.Deployable{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployable",
+			APIVersion: "apps.open-cluster-management.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcServiceName + "2",
+			Namespace: fooDeployer.Namespace,
+			Annotations: map[string]string{
+				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+			},
+			Labels: map[string]string{
+				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+			},
+		},
+		Spec: dplv1.DeployableSpec{
+			Template: &runtime.RawExtension{
+				Object: mcService2,
+			},
+		},
+	}
 	svcDeployableRef = &corev1.ObjectReference{
 		Name:       mcServiceName,
 		Kind:       "Deployable",
 		APIVersion: "apps.open-cluster-management.io/v1",
 	}
+	svcDeployableRef2 = &corev1.ObjectReference{
+		Name:       mcServiceName + "2",
+		Namespace:  fooDeployer.Namespace,
+		Kind:       "Deployable",
+		APIVersion: "apps.open-cluster-management.io/v1",
+	}
+
 	templateRHACM = appv1alpha1.HybridTemplate{
 		DeployerType: RHACM,
 		Template: &runtime.RawExtension{
 			Object: svcDeployable,
+		},
+	}
+	templateRHACM2 = appv1alpha1.HybridTemplate{
+		DeployerType: RHACM,
+		Template: &runtime.RawExtension{
+			Object: svcDeployable2,
 		},
 	}
 	cm = &corev1.ConfigMap{
@@ -367,7 +420,7 @@ func TestHybridDeployableDependency(t *testing.T) {
 
 }
 
-func TestObtainDeployableDependencyError(t *testing.T) {
+func TestDeployableDependencyRefGVKEqualsDeployableGVK(t *testing.T) {
 	g := NewWithT(t)
 	hdplDependent := &appv1alpha1.Deployable{
 		ObjectMeta: metav1.ObjectMeta{
@@ -417,6 +470,7 @@ func TestObtainDeployableDependencyError(t *testing.T) {
 			},
 		},
 	}
+
 	dependentHDPL.Spec.Dependencies = []corev1.ObjectReference{
 		*svcDeployableRef,
 	}
@@ -424,7 +478,44 @@ func TestObtainDeployableDependencyError(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive())
 	//  hdpl status update
 	g.Eventually(requests, timeout, interval).Should(Receive())
+	// c.Get(context.TODO(), types.NamespacedName{Name: dependentHDPL.Name, Namespace: dependentHDPL.Namespace}, dependentHDPL)
 	g.Expect(c.Get(context.TODO(), types.NamespacedName{Name: dependentHDPL.Name, Namespace: dependentHDPL.Namespace}, dependentHDPL)).To(Succeed())
 	c.Delete(context.TODO(), dependentHDPL)
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	hdplDependent2 := &appv1alpha1.Deployable{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hdplDependentName + "2",
+			Namespace: hdplDependentNamespace,
+		},
+		Spec: appv1alpha1.DeployableSpec{
+			HybridTemplates: []appv1alpha1.HybridTemplate{
+				templateRHACM2,
+			},
+		},
+	}
+
+	dependentHDPL2 := hdplDependent2.DeepCopy()
+
+	dependentHDPL2.Spec.Placement = &appv1alpha1.HybridPlacement{
+		Deployers: []corev1.ObjectReference{
+			{
+				Name:      dependentDeployer.Name,
+				Namespace: dependentDeployer.Namespace,
+			},
+		},
+	}
+
+	dependentHDPL2.Spec.Dependencies = []corev1.ObjectReference{
+		*svcDeployableRef2,
+	}
+	g.Expect(c.Create(context.TODO(), dependentHDPL2)).To(Succeed())
+	g.Eventually(requests, timeout, interval).Should(Receive())
+	//  hdpl status update
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	g.Expect(c.Get(context.TODO(), types.NamespacedName{Name: dependentHDPL2.Name, Namespace: dependentHDPL2.Namespace}, dependentHDPL2)).To(Succeed())
+
+	c.Delete(context.TODO(), dependentHDPL2)
 	g.Eventually(requests, timeout, interval).Should(Receive())
 }
