@@ -211,7 +211,7 @@ func TestReconcileWithDeployer(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -292,7 +292,7 @@ func TestReconcileWithDeployerLabel(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
@@ -387,7 +387,7 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	c = mgr.GetClient()
 
 	rec := newReconciler(mgr)
-	recFn, requests := SetupTestReconcile(rec)
+	recFn, requests, _ := SetupTestReconcile(rec)
 
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
