@@ -236,7 +236,6 @@ func (r *ReconcileHybridDeployable) getPlacementDecisions(instance *corev1alpha1
 			for index, decision := range oldpr.Status.Decisions {
 				cluster := &corev1.ObjectReference{}
 				cluster.Name = decision.ClusterName
-				cluster.Namespace = decision.ClusterNamespace
 				cluster.Kind = corev1alpha1.ClusterGVK.Kind
 				cluster.APIVersion = corev1alpha1.ClusterGVK.Group + "/" + corev1alpha1.ClusterGVK.Version
 				clusters[index] = *cluster
