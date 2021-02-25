@@ -478,7 +478,6 @@ func TestDeployableDependencyRefGVKEqualsDeployableGVK(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive())
 	//  hdpl status update
 	g.Eventually(requests, timeout, interval).Should(Receive())
-	// c.Get(context.TODO(), types.NamespacedName{Name: dependentHDPL.Name, Namespace: dependentHDPL.Namespace}, dependentHDPL)
 	g.Expect(c.Get(context.TODO(), types.NamespacedName{Name: dependentHDPL.Name, Namespace: dependentHDPL.Namespace}, dependentHDPL)).To(Succeed())
 	c.Delete(context.TODO(), dependentHDPL)
 	g.Eventually(requests, timeout, interval).Should(Receive())
