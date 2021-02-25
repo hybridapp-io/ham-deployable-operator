@@ -45,14 +45,14 @@ var (
 	HybridDeployableController       = "hybriddeployable"
 	DefaultDeployerType              = "kubernetes"
 	DefaultKubernetesPlacementTarget = &metav1.GroupVersionResource{
-		Group:    "clusterregistry.k8s.io",
-		Version:  "v1alpha1",
-		Resource: "clusters",
+		Group:    "cluster.open-cluster-management.io",
+		Version:  "v1",
+		Resource: "managedclusters",
 	}
 	ClusterGVK = &metav1.GroupVersionKind{
-		Group:   "clusterregistry.k8s.io",
-		Version: "v1alpha1",
-		Kind:    "Cluster",
+		Group:   "cluster.open-cluster-management.io",
+		Version: "v1",
+		Kind:    "ManagedCluster",
 	}
 	DeployerPlacementTarget = &metav1.GroupVersionResource{
 		Group:    "core.hybridapp.io",

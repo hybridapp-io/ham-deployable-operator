@@ -21,12 +21,12 @@ import (
 
 	. "github.com/onsi/gomega"
 
+	managedclusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	clusterv1alpha1 "k8s.io/cluster-registry/pkg/apis/clusterregistry/v1alpha1"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -46,24 +46,22 @@ const (
 )
 
 var (
-	clusterName      = "cluster-1"
-	clusterNamespace = "cluster-1"
+	clusterName = "cluster-1"
 
 	clusterNS = corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterNamespace,
+			Name: clusterName,
 		},
 	}
 
-	cluster = &clusterv1alpha1.Cluster{
+	cluster = &managedclusterv1.ManagedCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName,
-			Namespace: clusterNamespace,
+			Name: clusterName,
 		},
 	}
 
 	deployerName      = "mydplyr"
-	deployerNamespace = clusterNamespace
+	deployerNamespace = clusterName
 	deployerKey       = types.NamespacedName{
 		Name:      deployerName,
 		Namespace: deployerNamespace,
@@ -84,7 +82,7 @@ var (
 
 	deployerSetKey = types.NamespacedName{
 		Name:      clusterName,
-		Namespace: clusterNamespace,
+		Namespace: clusterName,
 	}
 
 	deployerInSetSpec = prulev1alpha1.DeployerSpecDescriptor{
@@ -434,7 +432,7 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 
 	decisionInPlacement := placementv1.PlacementDecision{
 		ClusterName:      clusterName,
-		ClusterNamespace: clusterNamespace,
+		ClusterNamespace: clusterName,
 	}
 
 	newpd := []placementv1.PlacementDecision{
