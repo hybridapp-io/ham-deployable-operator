@@ -360,7 +360,7 @@ func TestUpdateDeployableChild(t *testing.T) {
 
 	decisionInPlacement := placementv1.PlacementDecision{
 		ClusterName:      clusterName,
-		ClusterNamespace: clusterNamespace,
+		ClusterNamespace: clusterName,
 	}
 
 	newpd := []placementv1.PlacementDecision{
@@ -476,7 +476,7 @@ func TestUpdateTemplateNamespace(t *testing.T) {
 
 	decisionInPlacement := placementv1.PlacementDecision{
 		ClusterName:      clusterName,
-		ClusterNamespace: clusterNamespace,
+		ClusterNamespace: clusterName,
 	}
 
 	newpd := []placementv1.PlacementDecision{
@@ -599,7 +599,7 @@ func TestUpdateDiscoveryCompleted(t *testing.T) {
 
 	decisionInPlacement := placementv1.PlacementDecision{
 		ClusterName:      clusterName,
-		ClusterNamespace: clusterNamespace,
+		ClusterNamespace: clusterName,
 	}
 
 	newpd := []placementv1.PlacementDecision{
@@ -736,7 +736,7 @@ func TestDeployWithUnknownObjectCRD(t *testing.T) {
 
 	decisionInPlacement := placementv1.PlacementDecision{
 		ClusterName:      clusterName,
-		ClusterNamespace: clusterNamespace,
+		ClusterNamespace: clusterName,
 	}
 
 	newpd := []placementv1.PlacementDecision{
