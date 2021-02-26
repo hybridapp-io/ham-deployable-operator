@@ -45,7 +45,6 @@ var (
 	applicationName        = "wordpress-01"
 	appLabelSelector       = "app.kubernetes.io/name"
 	mcServiceName          = "my-svc"
-	mcName                 = "dependency-ns"
 	hdplDependentName      = "dependent"
 	hdplDependentNamespace = "dependent-ns"
 
