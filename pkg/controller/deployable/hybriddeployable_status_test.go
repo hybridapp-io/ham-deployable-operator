@@ -94,6 +94,11 @@ var (
 		},
 	}
 
+	templateKubernetes = appv1alpha1.HybridTemplate{
+		Template: &runtime.RawExtension{
+			Object: payloadConfigMap,
+		},
+	}
 	templateConfigMap = appv1alpha1.HybridTemplate{
 		DeployerType: "configmap",
 		Template: &runtime.RawExtension{
@@ -339,13 +344,6 @@ func TestDeployableStatus(t *testing.T) {
 
 func TestDeployableWithChildrenStatus(t *testing.T) {
 	g := NewWithT(t)
-	hdDeployable.Spec = appv1alpha1.DeployableSpec{
-		HybridTemplates: []appv1alpha1.HybridTemplate{
-			templateConfigMap,
-			templateEndpoints,
-			templateSecret,
-		},
-	}
 
 	var c client.Client
 
@@ -392,8 +390,9 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 	// Update decision of pr
 	hpr.Status.Decisions = []corev1.ObjectReference{
 		{
-			Kind: "ManagedCluster",
-			Name: clusterName,
+			Kind:       "ManagedCluster",
+			Name:       clusterName,
+			APIVersion: appv1alpha1.ClusterGVK.Group + "/" + appv1alpha1.ClusterGVK.Version,
 		},
 	}
 	g.Expect(c.Status().Update(context.TODO(), hpr)).NotTo(HaveOccurred())
@@ -411,12 +410,18 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 
 	// hybrid deployable
 	hdpl1 := hdDeployable.DeepCopy()
-	hdpl1.Spec.Placement = &appv1alpha1.HybridPlacement{
-		PlacementRef: &corev1.ObjectReference{
-			Name:      hpr1Name,
-			Namespace: hpr1Namespace,
+	hdpl1.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateKubernetes,
+		},
+		Placement: &appv1alpha1.HybridPlacement{
+			PlacementRef: &corev1.ObjectReference{
+				Name:      hpr1Name,
+				Namespace: hpr1Namespace,
+			},
 		},
 	}
+
 	g.Expect(c.Create(context.TODO(), hdpl1)).To(Succeed())
 
 	defer func() {
@@ -427,10 +432,10 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 	}()
 
 	g.Eventually(requests, timeout, interval).Should(Receive())
+	g.Eventually(requests, timeout, interval).Should(Receive())
 
 	// Check that status not empty
 	g.Expect(c.Get(context.TODO(), hdplKey, hdpl1)).NotTo(HaveOccurred())
-	klog.Info("\n>>>>>>>>>>>>> hdpl status:", hdpl1.Status)
 
 	g.Expect(hdpl1.Status.PerDeployerStatus).ToNot(BeEmpty())
 }
