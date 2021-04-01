@@ -150,16 +150,16 @@ func (r *ReconcileHybridDeployable) getDeployersByPlacementReference(instance *c
 			} else if decision.Kind == corev1alpha1.ClusterGVK.Kind && decision.APIVersion == corev1alpha1.ClusterGVK.Group+"/"+corev1alpha1.ClusterGVK.Version {
 				dset := &prulev1alpha1.DeployerSet{}
 				key := types.NamespacedName{
-					Namespace: decision.Namespace,
+					Namespace: decision.Name,
 					Name:      decision.Name,
 				}
 				deployer := &prulev1alpha1.Deployer{}
 				deployer.Name = decision.Name
-				deployer.Namespace = decision.Namespace
+				deployer.Namespace = decision.Name
 				deployer.Spec.Type = corev1alpha1.DefaultDeployerType
 
 				err = r.Get(context.TODO(), key, dset)
-				klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", decision.Namespace, "/", decision.Name, " with err:", err, " result: ", dset)
+				klog.V(packageDetailLogLevel).Info("Got Deployerset for cluster ", decision.Name, "/", decision.Name, " with err:", err, " result: ", dset)
 
 				if err != nil {
 					if !errors.IsNotFound(err) {
