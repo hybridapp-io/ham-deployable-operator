@@ -19,9 +19,13 @@ import (
 	"testing"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
+	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+<<<<<<< HEAD
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+=======
+>>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
@@ -29,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -43,6 +48,10 @@ var (
 		},
 	}
 
+	hdplKey = types.NamespacedName{
+		Name:      hdplName,
+		Namespace: hdplNamespace,
+	}
 	hdDeployable = &appv1alpha1.Deployable{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hdplName,
@@ -100,6 +109,11 @@ var (
 		},
 	}
 
+	templateKubernetes = appv1alpha1.HybridTemplate{
+		Template: &runtime.RawExtension{
+			Object: payloadConfigMap,
+		},
+	}
 	templateConfigMap = appv1alpha1.HybridTemplate{
 		DeployerType: "configmap",
 		Template: &runtime.RawExtension{
@@ -116,6 +130,38 @@ var (
 		DeployerType: "secret",
 		Template: &runtime.RawExtension{
 			Object: payloadSecret,
+		},
+	}
+
+	hpr1Name      = "output-hpr"
+	hpr1Namespace = hdplNamespace
+	hpr1          = &prulev1alpha1.PlacementRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hpr1Name,
+			Namespace: hpr1Namespace,
+		},
+		Spec: prulev1alpha1.PlacementRuleSpec{
+			TargetLabels: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"name": clusterName},
+			},
+		},
+	}
+
+	dplName      = "output-deployable"
+	dplNamespace = clusterName
+	dpl1         = &dplv1.Deployable{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dplName,
+			Namespace: dplNamespace,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationHybridDiscovery: "true",
+				appv1alpha1.HostingHybridDeployable:   hdplNamespace + "/" + hdplName,
+			},
+		},
+		Spec: dplv1.DeployableSpec{
+			Template: &runtime.RawExtension{
+				Object: payloadConfigMap,
+			},
 		},
 	}
 )
@@ -311,6 +357,7 @@ func TestDeployableStatus(t *testing.T) {
 
 }
 
+<<<<<<< HEAD
 func TestDeployableStatusPropagation(t *testing.T) {
 	g := NewWithT(t)
 
@@ -343,6 +390,11 @@ func TestDeployableStatusPropagation(t *testing.T) {
 		},
 	}
 
+=======
+func TestDeployableWithChildrenStatus(t *testing.T) {
+	g := NewWithT(t)
+
+>>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 	var c client.Client
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
@@ -354,7 +406,10 @@ func TestDeployableStatusPropagation(t *testing.T) {
 
 	rec := newReconciler(mgr)
 	recFn, requests, _ := SetupTestReconcile(rec)
+<<<<<<< HEAD
 
+=======
+>>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
 	stopMgr, mgrStopped := StartTestManager(mgr, g)
@@ -364,6 +419,7 @@ func TestDeployableStatusPropagation(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
+<<<<<<< HEAD
 	prule := placementRule.DeepCopy()
 	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
 
@@ -463,4 +519,79 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect(len(inst.Status.PerDeployerStatus)).ToNot(Equal(0))
 	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).To(Equal("Failed"))
 	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Reason)).To(Equal("TestReason"))
+=======
+	// managed cluster
+	clstr := cluster.DeepCopy()
+	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), clstr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	// placement rule
+	hpr := hpr1.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hpr)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), hpr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	// Update decision of pr
+	hpr.Status.Decisions = []corev1.ObjectReference{
+		{
+			Kind:       "ManagedCluster",
+			Name:       clusterName,
+			APIVersion: appv1alpha1.ClusterGVK.Group + "/" + appv1alpha1.ClusterGVK.Version,
+		},
+	}
+	g.Expect(c.Status().Update(context.TODO(), hpr)).NotTo(HaveOccurred())
+
+	// deployable
+	dpl := dpl1.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dpl)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), dpl); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	// hybrid deployable
+	hdpl1 := hdDeployable.DeepCopy()
+	hdpl1.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateKubernetes,
+		},
+		Placement: &appv1alpha1.HybridPlacement{
+			PlacementRef: &corev1.ObjectReference{
+				Name:      hpr1Name,
+				Namespace: hpr1Namespace,
+			},
+		},
+	}
+
+	g.Expect(c.Create(context.TODO(), hdpl1)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), hdpl1); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	g.Eventually(requests, timeout, interval).Should(Receive())
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// Check that status not empty
+	g.Expect(c.Get(context.TODO(), hdplKey, hdpl1)).NotTo(HaveOccurred())
+
+	g.Expect(hdpl1.Status.PerDeployerStatus).ToNot(BeEmpty())
+>>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 }

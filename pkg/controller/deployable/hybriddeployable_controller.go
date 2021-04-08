@@ -528,8 +528,6 @@ func (mapper *outputMapper) Map(obj handler.MapObject) []reconcile.Request {
 
 // ReconcileHybridDeployable reconciles a Deployable object
 type ReconcileHybridDeployable struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
 	client.Client
 	eventRecorder *utils.EventRecorder
 	hybridDeployableRegistry
