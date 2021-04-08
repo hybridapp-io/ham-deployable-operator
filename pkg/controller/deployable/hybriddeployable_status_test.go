@@ -357,7 +357,104 @@ func TestDeployableStatus(t *testing.T) {
 
 }
 
-<<<<<<< HEAD
+func TestDeployableWithChildrenStatus(t *testing.T) {
+	g := NewWithT(t)
+
+	var c client.Client
+
+	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+	// channel when it is finished.
+	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = mgr.GetClient()
+
+	rec := newReconciler(mgr)
+	recFn, requests, _ := SetupTestReconcile(rec)
+	g.Expect(add(mgr, recFn)).To(Succeed())
+
+	stopMgr, mgrStopped := StartTestManager(mgr, g)
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	// managed cluster
+	clstr := cluster.DeepCopy()
+	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), clstr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	// placement rule
+	hpr := hpr1.DeepCopy()
+	g.Expect(c.Create(context.TODO(), hpr)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), hpr); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	// Update decision of pr
+	hpr.Status.Decisions = []corev1.ObjectReference{
+		{
+			Kind:       "ManagedCluster",
+			Name:       clusterName,
+			APIVersion: appv1alpha1.ClusterGVK.Group + "/" + appv1alpha1.ClusterGVK.Version,
+		},
+	}
+	g.Expect(c.Status().Update(context.TODO(), hpr)).NotTo(HaveOccurred())
+
+	// deployable
+	dpl := dpl1.DeepCopy()
+	g.Expect(c.Create(context.TODO(), dpl)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), dpl); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	// hybrid deployable
+	hdpl1 := hdDeployable.DeepCopy()
+	hdpl1.Spec = appv1alpha1.DeployableSpec{
+		HybridTemplates: []appv1alpha1.HybridTemplate{
+			templateKubernetes,
+		},
+		Placement: &appv1alpha1.HybridPlacement{
+			PlacementRef: &corev1.ObjectReference{
+				Name:      hpr1Name,
+				Namespace: hpr1Namespace,
+			},
+		},
+	}
+
+	g.Expect(c.Create(context.TODO(), hdpl1)).To(Succeed())
+
+	defer func() {
+		if err = c.Delete(context.TODO(), hdpl1); err != nil {
+			klog.Error(err)
+			t.Fail()
+		}
+	}()
+
+	g.Eventually(requests, timeout, interval).Should(Receive())
+	g.Eventually(requests, timeout, interval).Should(Receive())
+
+	// Check that status not empty
+	g.Expect(c.Get(context.TODO(), hdplKey, hdpl1)).NotTo(HaveOccurred())
+
+	g.Expect(hdpl1.Status.PerDeployerStatus).ToNot(BeEmpty())
+}
+
 func TestDeployableStatusPropagation(t *testing.T) {
 	g := NewWithT(t)
 
@@ -390,11 +487,6 @@ func TestDeployableStatusPropagation(t *testing.T) {
 		},
 	}
 
-=======
-func TestDeployableWithChildrenStatus(t *testing.T) {
-	g := NewWithT(t)
-
->>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 	var c client.Client
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
@@ -406,10 +498,7 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 
 	rec := newReconciler(mgr)
 	recFn, requests, _ := SetupTestReconcile(rec)
-<<<<<<< HEAD
 
-=======
->>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 	g.Expect(add(mgr, recFn)).To(Succeed())
 
 	stopMgr, mgrStopped := StartTestManager(mgr, g)
@@ -419,7 +508,6 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-<<<<<<< HEAD
 	prule := placementRule.DeepCopy()
 	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
 
@@ -519,79 +607,4 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 	g.Expect(len(inst.Status.PerDeployerStatus)).ToNot(Equal(0))
 	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).To(Equal("Failed"))
 	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Reason)).To(Equal("TestReason"))
-=======
-	// managed cluster
-	clstr := cluster.DeepCopy()
-	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
-
-	defer func() {
-		if err = c.Delete(context.TODO(), clstr); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
-
-	// placement rule
-	hpr := hpr1.DeepCopy()
-	g.Expect(c.Create(context.TODO(), hpr)).To(Succeed())
-
-	defer func() {
-		if err = c.Delete(context.TODO(), hpr); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
-
-	// Update decision of pr
-	hpr.Status.Decisions = []corev1.ObjectReference{
-		{
-			Kind:       "ManagedCluster",
-			Name:       clusterName,
-			APIVersion: appv1alpha1.ClusterGVK.Group + "/" + appv1alpha1.ClusterGVK.Version,
-		},
-	}
-	g.Expect(c.Status().Update(context.TODO(), hpr)).NotTo(HaveOccurred())
-
-	// deployable
-	dpl := dpl1.DeepCopy()
-	g.Expect(c.Create(context.TODO(), dpl)).To(Succeed())
-
-	defer func() {
-		if err = c.Delete(context.TODO(), dpl); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
-
-	// hybrid deployable
-	hdpl1 := hdDeployable.DeepCopy()
-	hdpl1.Spec = appv1alpha1.DeployableSpec{
-		HybridTemplates: []appv1alpha1.HybridTemplate{
-			templateKubernetes,
-		},
-		Placement: &appv1alpha1.HybridPlacement{
-			PlacementRef: &corev1.ObjectReference{
-				Name:      hpr1Name,
-				Namespace: hpr1Namespace,
-			},
-		},
-	}
-
-	g.Expect(c.Create(context.TODO(), hdpl1)).To(Succeed())
-
-	defer func() {
-		if err = c.Delete(context.TODO(), hdpl1); err != nil {
-			klog.Error(err)
-			t.Fail()
-		}
-	}()
-
-	g.Eventually(requests, timeout, interval).Should(Receive())
-	g.Eventually(requests, timeout, interval).Should(Receive())
-
-	// Check that status not empty
-	g.Expect(c.Get(context.TODO(), hdplKey, hdpl1)).NotTo(HaveOccurred())
-
-	g.Expect(hdpl1.Status.PerDeployerStatus).ToNot(BeEmpty())
->>>>>>> e562a20ceefc356f791f65c2ca67b1aaa50cf20e
 }
