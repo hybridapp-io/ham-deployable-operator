@@ -426,8 +426,9 @@ func TestDeployableStatusPropagation(t *testing.T) {
 
 	g.Expect(annotations[appv1alpha1.HostingHybridDeployable]).To(Equal(instance.Namespace + "/" + instance.Name))
 
-	// Set status to Failed
+	// Set status to failed & set a reason
 	dpl.Status.Phase = "Failed"
+	dpl.Status.Reason = "TestReason"
 
 	dpl.SetAnnotations(annotations)
 	dpl.Spec = dplv1.DeployableSpec{
@@ -449,9 +450,17 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
 	g.Expect(dpls.Items).To(HaveLen(oneitem))
 	dpl = dpls.Items[0]
-	g.Expect(string(dpl.Status.Phase)).To(Equal("Failed"))
+	g.Expect(string(dpl.Status.ResourceUnitStatus.Phase)).To(Equal("Failed"))
+	g.Expect(string(dpl.Status.ResourceUnitStatus.Reason)).To(Equal("TestReason"))
 
-	// Phase should be updated on hybrid deployable
-	g.Expect((hybridDeployable.Status.PerDeployerStatus["default/"+payloadIncomplete.Name].ResourceUnitStatus.Phase)).ToNot(BeNil())
-	g.Expect(string(hybridDeployable.Status.PerDeployerStatus["default/"+payloadIncomplete.Name].ResourceUnitStatus.Phase)).To(Equal("Failed"))
+	// Fetch hybrid deployable
+	insts := &appv1alpha1.DeployableList{}
+	g.Expect(c.List(context.TODO(), insts, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	inst := insts.Items[0]
+
+	// Status should be updated on hybrid deployable
+	g.Expect((inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).ToNot(BeNil())
+	g.Expect(len(inst.Status.PerDeployerStatus)).ToNot(Equal(0))
+	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).To(Equal("Failed"))
+	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Reason)).To(Equal("TestReason"))
 }
