@@ -559,7 +559,7 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect(dpls.Items).To(HaveLen(oneitem))
 	dpl = dpls.Items[0]
 	g.Expect(string(dpl.Status.ResourceUnitStatus.Phase)).To(Equal("Failed"))
-	g.Expect(string(dpl.Status.ResourceUnitStatus.Reason)).To(Equal("TestReason"))
+	g.Expect(dpl.Status.ResourceUnitStatus.Reason).To(Equal("TestReason"))
 
 	// Fetch hybrid deployable
 	c.Get(context.TODO(), types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, instance)
@@ -567,5 +567,5 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect((instance.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).ToNot(BeNil())
 	g.Expect(len(instance.Status.PerDeployerStatus)).ToNot(Equal(0))
 	g.Expect(string(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Phase)).To(Equal("Failed"))
-	g.Expect(string(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Reason)).To(Equal("TestReason"))
+	g.Expect(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Reason).To(Equal("TestReason"))
 }
