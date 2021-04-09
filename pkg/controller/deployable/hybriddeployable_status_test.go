@@ -37,7 +37,6 @@ import (
 
 var (
 	hdplName      = "output"
-	rhName        = "rhdpl"
 	hdplNamespace = "output-ns"
 	hdplOutputNS  = corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -55,15 +54,6 @@ var (
 			Namespace: hdplNamespace,
 		},
 		Spec: appv1alpha1.DeployableSpec{},
-	}
-
-	rhDeployable = dplv1.Deployable{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        rhName,
-			Namespace:   hdplNamespace,
-			Annotations: map[string]string{appv1alpha1.HostingHybridDeployable: hdDeployable.Namespace + "/" + hdDeployable.Name},
-		},
-		Spec: dplv1.DeployableSpec{},
 	}
 
 	payloadConfigMap = &corev1.ConfigMap{
@@ -466,7 +456,7 @@ func TestDeployableStatusPropagation(t *testing.T) {
 		},
 	}
 	templateInHybridDeployable := appv1alpha1.HybridTemplate{
-		DeployerType: deployerType,
+		DeployerType: appv1alpha1.DefaultDeployerType,
 		Template: &runtime.RawExtension{
 			Object: payloadIncomplete,
 		},
@@ -510,16 +500,6 @@ func TestDeployableStatusPropagation(t *testing.T) {
 
 	defer c.Delete(context.TODO(), prule)
 
-	dplyr := deployer.DeepCopy()
-	g.Expect(c.Create(context.TODO(), dplyr)).To(Succeed())
-
-	defer c.Delete(context.TODO(), dplyr)
-
-	dset := deployerSet.DeepCopy()
-	g.Expect(c.Create(context.TODO(), dset)).To(Succeed())
-
-	defer c.Delete(context.TODO(), dset)
-
 	clstr := cluster.DeepCopy()
 	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
 
@@ -530,8 +510,7 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect(c.Get(context.TODO(), placementRuleKey, pr)).To(Succeed())
 
 	decisionInPlacement := placementv1.PlacementDecision{
-		ClusterName:      clusterName,
-		ClusterNamespace: clusterNamespace,
+		ClusterName: clusterName,
 	}
 
 	newpd := []placementv1.PlacementDecision{
@@ -562,24 +541,12 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect(dpls.Items).To(HaveLen(oneitem))
 
 	dpl := dpls.Items[0]
-	annotations := dpl.GetAnnotations()
-	annotations[appv1alpha1.AnnotationHybridDiscovery] = appv1alpha1.HybridDiscoveryCompleted
-
-	g.Expect(annotations[appv1alpha1.HostingHybridDeployable]).To(Equal(instance.Namespace + "/" + instance.Name))
 
 	// Set status to failed & set a reason
 	dpl.Status.Phase = "Failed"
 	dpl.Status.Reason = "TestReason"
 
-	dpl.SetAnnotations(annotations)
-	dpl.Spec = dplv1.DeployableSpec{
-		Template: &runtime.RawExtension{
-			Object: payloadFoo,
-		},
-	}
-
-	// Update deployable & status
-	g.Expect(c.Update(context.TODO(), &dpl)).To(Succeed())
+	// Update deployable status
 
 	g.Expect(c.Status().Update(context.TODO(), &dpl)).To(Succeed())
 
@@ -591,17 +558,14 @@ func TestDeployableStatusPropagation(t *testing.T) {
 	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
 	g.Expect(dpls.Items).To(HaveLen(oneitem))
 	dpl = dpls.Items[0]
-	g.Expect(string(dpl.Status.ResourceUnitStatus.Phase)).To(Equal("Failed"))
-	g.Expect(string(dpl.Status.ResourceUnitStatus.Reason)).To(Equal("TestReason"))
+	g.Expect(dpl.Status.ResourceUnitStatus.Phase).To(Equal("Failed"))
+	g.Expect(dpl.Status.ResourceUnitStatus.Reason).To(Equal("TestReason"))
 
 	// Fetch hybrid deployable
-	insts := &appv1alpha1.DeployableList{}
-	g.Expect(c.List(context.TODO(), insts, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	inst := insts.Items[0]
-
+	c.Get(context.TODO(), types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, instance)
 	// Status should be updated on hybrid deployable
-	g.Expect((inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).ToNot(BeNil())
-	g.Expect(len(inst.Status.PerDeployerStatus)).ToNot(Equal(0))
-	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).To(Equal("Failed"))
-	g.Expect(string(inst.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Reason)).To(Equal("TestReason"))
+	g.Expect((instance.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).ToNot(BeNil())
+	g.Expect(len(instance.Status.PerDeployerStatus)).ToNot(Equal(0))
+	g.Expect(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Phase).To(Equal("Failed"))
+	g.Expect(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Reason).To(Equal("TestReason"))
 }
