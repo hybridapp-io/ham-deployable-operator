@@ -105,9 +105,10 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		}
 	} else {
 		dpllist := &dplv1.DeployableList{}
+		// populate the status outputs
 		err = r.List(context.TODO(), dpllist, listopt)
 		if err != nil {
-			klog.Info("Failed to list deployables with error", err)
+			klog.Info("Failed to list deployables with error ", err)
 			return
 		}
 
@@ -117,6 +118,30 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 			ref.Namespace = dpl.Namespace
 			ref.Name = dpl.Name
 			dplystatus.Outputs = append(dplystatus.Outputs, ref)
+		}
+
+		hostinglabelmap := map[string]string{
+			corev1alpha1.HostingHybridDeployable: instance.Name,
+		}
+		hostinglistopt := &client.ListOptions{
+			Namespace:     deployer.Namespace,
+			LabelSelector: labels.Set(hostinglabelmap).AsSelector(),
+		}
+
+		// populate the status ResourceUnitStatus
+		err = r.List(context.TODO(), dpllist, hostinglistopt)
+		if err != nil {
+			klog.Info("Failed to list deployables with error ", err)
+			return
+		}
+
+		for _, dpl := range dpllist.Items {
+			if host, ok := dpl.Annotations[corev1alpha1.HostingHybridDeployable]; ok {
+				if host == instance.Namespace+"/"+instance.Name {
+					dplystatus.ResourceUnitStatus = dpl.Status.ResourceUnitStatus
+					break
+				}
+			}
 		}
 	}
 
