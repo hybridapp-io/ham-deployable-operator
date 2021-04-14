@@ -202,6 +202,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					newDeployable := e.ObjectNew.(*dplv1.Deployable)
 					oldDeployable := e.ObjectOld.(*dplv1.Deployable)
+					if !reflect.DeepEqual(oldDeployable.Status, newDeployable.Status) {
+						return true
+					}
 					// discovery annotation = completed on new
 					if _, completedNew := newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
 						newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
@@ -528,8 +531,6 @@ func (mapper *outputMapper) Map(obj handler.MapObject) []reconcile.Request {
 
 // ReconcileHybridDeployable reconciles a Deployable object
 type ReconcileHybridDeployable struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
 	client.Client
 	eventRecorder *utils.EventRecorder
 	hybridDeployableRegistry
