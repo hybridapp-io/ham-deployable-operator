@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
+	"github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	"github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
@@ -432,7 +433,7 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 }
 
 func (r *ReconcileHybridDeployable) genDeployableGenerateName(obj *unstructured.Unstructured) string {
-	return strings.ToLower(obj.GetKind()+"-"+obj.GetNamespace()+"-"+obj.GetName()) + "-"
+	return utils.TruncateString(strings.ToLower(obj.GetKind()+"-"+obj.GetNamespace()+"-"+obj.GetName()), v1alpha1.GeneratedDeployableNameLength) + "-"
 }
 
 func (r *ReconcileHybridDeployable) genObjectIdentifier(metaobj metav1.Object) types.NamespacedName {

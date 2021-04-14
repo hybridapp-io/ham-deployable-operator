@@ -23,6 +23,11 @@ import (
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 )
 
+const (
+	dns1035regex     = "[a-z]([-a-z0-9]*[a-z0-9])?"
+	illegalCharRegex = ":"
+)
+
 func IsInClusterDeployer(deployer *prulev1alpha1.Deployer) bool {
 	incluster := true
 
@@ -75,4 +80,16 @@ func StripGroup(gv string) string {
 
 func IsNamespaceScoped(deployer *prulev1alpha1.Deployer) bool {
 	return deployer.Spec.Scope == "" || deployer.Spec.Scope == apiextensions.NamespaceScoped
+}
+
+func TruncateString(str string, num int) string {
+	truncated := str
+	r, _ := regexp.Compile(illegalCharRegex)
+	truncated = r.ReplaceAllString(truncated, "-")
+	if len(str) > num {
+		truncated = str[0:num]
+		r, _ := regexp.Compile(dns1035regex)
+		truncated = r.FindString(truncated)
+	}
+	return truncated
 }

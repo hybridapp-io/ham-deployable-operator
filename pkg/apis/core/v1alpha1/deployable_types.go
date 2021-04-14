@@ -64,6 +64,8 @@ var (
 		Version: "v1alpha1",
 		Kind:    "Deployer",
 	}
+	// GeneratedDeployableNameLength is the max length of a generated name for a deployable.
+	GeneratedDeployableNameLength = 58
 )
 
 const (
