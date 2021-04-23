@@ -17,8 +17,6 @@ package deployable
 import (
 	"context"
 
-	genericerrors "errors"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -199,8 +197,8 @@ func (r *ReconcileHybridDeployable) getDeployersByPlacementReference(instance *c
 		}
 		return deployers, nil
 	}
-	noPlacementError := genericerrors.New("No placement rule decisions found for hybrid deployable " + instance.Namespace + "/" + instance.Name)
-	return nil, noPlacementError
+	klog.Info("No placement rule decisions found for hybrid deployable " + instance.Namespace + "/" + instance.Name)
+	return nil, nil
 }
 
 func (r *ReconcileHybridDeployable) getPlacementDecisions(instance *corev1alpha1.Deployable) ([]corev1.ObjectReference, error) {
