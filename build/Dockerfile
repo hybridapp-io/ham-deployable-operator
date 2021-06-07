@@ -1,11 +1,11 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.4
 
 LABEL   name="quay.io/hybridappio/ham-deployable-operator" \
         summary="Hybrid Application Model - Deployable Operator" \
         description="Handles deployable components running on non-kubernetes platform(s)."
 
 # Update image
-RUN microdnf update -y && rm -rf /var/cache/yum
+RUN microdnf update -y && microdnf clean all
 
 ENV OPERATOR=/usr/local/bin/ham-deployable-operator \
     USER_UID=1001 \
