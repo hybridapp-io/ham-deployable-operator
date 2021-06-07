@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.4
 
 LABEL   name="quay.io/hybridappio/ham-deployable-operator" \
         summary="Hybrid Application Model - Deployable Operator" \
