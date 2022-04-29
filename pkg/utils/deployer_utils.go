@@ -84,11 +84,11 @@ func IsNamespaceScoped(deployer *prulev1alpha1.Deployer) bool {
 
 func TruncateString(str string, num int) string {
 	truncated := str
-	r, _ := regexp.Compile(illegalCharRegex)
+	r := regexp.MustCompile(illegalCharRegex)
 	truncated = r.ReplaceAllString(truncated, "-")
 	if len(str) > num {
 		truncated = str[0:num]
-		r, _ := regexp.Compile(dns1035regex)
+		r := regexp.MustCompile(dns1035regex)
 		truncated = r.FindString(truncated)
 	}
 	return truncated
