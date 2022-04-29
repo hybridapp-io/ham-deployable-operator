@@ -19,11 +19,9 @@ import (
 	"testing"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
-	hdplv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,7 +65,7 @@ var (
 		},
 		Spec: appv1alpha1.DeployableSpec{},
 	}
-	mcService = &v1.Service{
+	mcService = &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
@@ -78,15 +76,15 @@ var (
 			Annotations: map[string]string{appLabelSelector: applicationName + "2"},
 			Labels:      map[string]string{appLabelSelector: applicationName + "2"},
 		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
 				{
 					Port: 3306,
 				},
 			},
 		},
 	}
-	mcService2 = &v1.Service{
+	mcService2 = &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
@@ -97,8 +95,8 @@ var (
 			Annotations: map[string]string{appLabelSelector: applicationName},
 			Labels:      map[string]string{appLabelSelector: applicationName},
 		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
 				{
 					Port: 3307,
 				},
@@ -114,10 +112,10 @@ var (
 			Name:      mcServiceName,
 			Namespace: fooDeployer.Namespace,
 			Annotations: map[string]string{
-				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+				appv1alpha1.AnnotationHybridDiscovery: appv1alpha1.HybridDiscoveryEnabled,
 			},
 			Labels: map[string]string{
-				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+				appv1alpha1.AnnotationHybridDiscovery: appv1alpha1.HybridDiscoveryEnabled,
 			},
 		},
 		Spec: dplv1.DeployableSpec{
@@ -135,10 +133,10 @@ var (
 			Name:      mcServiceName + "2",
 			Namespace: fooDeployer.Namespace,
 			Annotations: map[string]string{
-				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+				appv1alpha1.AnnotationHybridDiscovery: appv1alpha1.HybridDiscoveryEnabled,
 			},
 			Labels: map[string]string{
-				hdplv1alpha1.AnnotationHybridDiscovery: hdplv1alpha1.HybridDiscoveryEnabled,
+				appv1alpha1.AnnotationHybridDiscovery: appv1alpha1.HybridDiscoveryEnabled,
 			},
 		},
 		Spec: dplv1.DeployableSpec{

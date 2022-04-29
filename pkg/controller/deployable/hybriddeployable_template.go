@@ -27,9 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	"github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
-	"github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
+
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
@@ -155,7 +154,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 
 	for k, child := range gvrchildren {
 
-		if utils.IsNamespaceScoped(deployer) && child.GetNamespace() != deployer.GetNamespace() {
+		if hdplutils.IsNamespaceScoped(deployer) && child.GetNamespace() != deployer.GetNamespace() {
 			continue
 		}
 
@@ -420,7 +419,7 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	}
 
 	var objNamespace string
-	if !utils.IsNamespaceScoped(deployer) && templateobj.GetNamespace() != "" {
+	if !hdplutils.IsNamespaceScoped(deployer) && templateobj.GetNamespace() != "" {
 		objNamespace = templateobj.GetNamespace()
 	} else {
 		objNamespace = deployer.Namespace
@@ -433,7 +432,7 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 }
 
 func (r *ReconcileHybridDeployable) genDeployableGenerateName(obj *unstructured.Unstructured) string {
-	return utils.TruncateString(strings.ToLower(obj.GetKind()+"-"+obj.GetNamespace()+"-"+obj.GetName()), v1alpha1.GeneratedDeployableNameLength) + "-"
+	return hdplutils.TruncateString(strings.ToLower(obj.GetKind()+"-"+obj.GetNamespace()+"-"+obj.GetName()), corev1alpha1.GeneratedDeployableNameLength) + "-"
 }
 
 func (r *ReconcileHybridDeployable) genObjectIdentifier(metaobj metav1.Object) types.NamespacedName {
