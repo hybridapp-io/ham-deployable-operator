@@ -28,7 +28,7 @@ import (
 	corev1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	workapiv1 "github.com/open-cluster-management/api/work/v1"
 )
 
 func (r *ReconcileHybridDeployable) updateStatus(instance *corev1alpha1.Deployable) error {
@@ -104,15 +104,15 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 			dplystatus.Outputs = append(dplystatus.Outputs, ref)
 		}
 	} else {
-		dpllist := &dplv1.DeployableList{}
+		manifestworklist := &workapiv1.ManifestWorkList{}
 		// populate the status outputs
-		err = r.List(context.TODO(), dpllist, listopt)
+		err = r.List(context.TODO(), manifestworklist, listopt)
 		if err != nil {
 			klog.Info("Failed to list deployables with error ", err)
 			return
 		}
 
-		for _, dpl := range dpllist.Items {
+		for _, dpl := range manifestworklist.Items {
 			ref := corev1.ObjectReference{}
 			ref.SetGroupVersionKind(deployableGVK)
 			ref.Namespace = dpl.Namespace
@@ -129,16 +129,16 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 		}
 
 		// populate the status ResourceUnitStatus
-		err = r.List(context.TODO(), dpllist, hostinglistopt)
+		err = r.List(context.TODO(), manifestworklist, hostinglistopt)
 		if err != nil {
 			klog.Info("Failed to list deployables with error ", err)
 			return
 		}
 
-		for _, dpl := range dpllist.Items {
-			if host, ok := dpl.Annotations[corev1alpha1.HostingHybridDeployable]; ok {
+		for _, manifestwork := range manifestworklist.Items {
+			if host, ok := manifestwork.Annotations[corev1alpha1.HostingHybridDeployable]; ok {
 				if host == instance.Namespace+"/"+instance.Name {
-					dplystatus.ResourceUnitStatus = dpl.Status.ResourceUnitStatus
+					// TODO: Fix statusdplystatus.ResourceUnitStatus = manifestwork.Status.ResourceStatus.Manifests
 					break
 				}
 			}
