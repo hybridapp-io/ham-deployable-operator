@@ -88,7 +88,7 @@ type HybridPlacement struct {
 }
 
 // HybridDeployableSpec defines the desired state of HybridDeployable
-type DeployableSpec struct {
+type ManifestworkSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
@@ -103,7 +103,7 @@ type PerDeployerStatus struct {
 }
 
 // HybridDeployableStatus defines the observed state of HybridDeployable
-type DeployableStatus struct {
+type ManifestworkStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
@@ -116,23 +116,23 @@ type DeployableStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=deployables,scope=Namespaced
 // +kubebuilder:resource:path=deployables,shortName=hdpl
-type Deployable struct {
+type ManifestWork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   DeployableSpec   `json:"spec,omitempty"`
-	Status DeployableStatus `json:"status,omitempty"`
+	Spec   ManifestworkSpec   `json:"spec,omitempty"`
+	Status ManifestworkStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // DeployableList contains a list of Deployable
-type DeployableList struct {
+type ManifestWorkList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Deployable `json:"items"`
+	Items           []ManifestWork `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Deployable{}, &DeployableList{})
+	SchemeBuilder.Register(&ManifestWork{}, &ManifestWorkList{})
 }

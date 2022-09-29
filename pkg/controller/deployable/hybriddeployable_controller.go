@@ -37,7 +37,7 @@ import (
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	"github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	manifestwork "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
@@ -47,11 +47,11 @@ const (
 )
 
 var (
-	rhacmEnabled       = false
-	rhacmDeployableGVK = schema.GroupVersionKind{
+	rhacmEnabled         = false
+	rhacmManifestworkGVK = schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
 		Version: "v1",
-		Kind:    "Deployable",
+		Kind:    "ManifestWork",
 	}
 )
 
@@ -60,7 +60,7 @@ var (
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new Deployable Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new ManifestWork Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -71,7 +71,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	reconciler := &ReconcileHybridDeployable{Client: mgr.GetClient()}
 
 	err := reconciler.initRegistry(mgr.GetConfig())
-	if _, ok := reconciler.gvkGVRMap[rhacmDeployableGVK]; ok {
+	if _, ok := reconciler.gvkGVRMap[rhacmManifestworkGVK]; ok {
 		rhacmEnabled = true
 		klog.Info("RedHat Advanced Cluster Management(RHACM) is enabled in this environment")
 	} else {
@@ -194,25 +194,25 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		// watch on hybrid-discovery annotation of deployables, but only if RHACM is installed
 		err = c.Watch(
 			&source.Kind{
-				Type: &dplv1.Deployable{}},
+				Type: &manifestwork.ManifestWorkList{}},
 			&handler.EnqueueRequestsFromMapFunc{
 				ToRequests: &deployableMapper{mgr.GetClient()},
 			},
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
-					newDeployable := e.ObjectNew.(*dplv1.Deployable)
-					oldDeployable := e.ObjectOld.(*dplv1.Deployable)
-					if !reflect.DeepEqual(oldDeployable.Status, newDeployable.Status) {
+					newManifestwork := e.ObjectNew.(*manifestwork.ManifestWork)
+					oldManifestwork := e.ObjectOld.(*manifestwork.ManifestWork)
+					if !reflect.DeepEqual(oldManifestwork.Status, newManifestwork.Status) {
 						return true
 					}
 					// discovery annotation = completed on new
-					if _, completedNew := newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
-						newDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
+					if _, completedNew := newManifestwork.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
+						newManifestwork.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
 						// discovery annotation != completed on old
-						if _, completedOld := oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; !completedOld ||
-							oldDeployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] != appv1alpha1.HybridDiscoveryCompleted {
+						if _, completedOld := oldManifestwork.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; !completedOld ||
+							oldManifestwork.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] != appv1alpha1.HybridDiscoveryCompleted {
 							// hosted deployable
-							if _, hostedNew := newDeployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
+							if _, hostedNew := newManifestwork.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
 								return true
 							}
 						}
@@ -220,11 +220,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 					return false
 				},
 				CreateFunc: func(e event.CreateEvent) bool {
-					deployable := e.Object.(*dplv1.Deployable)
-					if _, completedNew := deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
-						deployable.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
-						// hosted deployable
-						if _, hostedNew := deployable.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
+					manifestwork := e.Object.(*manifestwork.ManifestWork)
+					if _, completedNew := manifestwork.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery]; completedNew &&
+						manifestwork.GetAnnotations()[appv1alpha1.AnnotationHybridDiscovery] == appv1alpha1.HybridDiscoveryCompleted {
+						// hosted manifestwork
+						if _, hostedNew := manifestwork.GetAnnotations()[appv1alpha1.HostingHybridDeployable]; hostedNew {
 							return true
 						}
 					}
@@ -244,7 +244,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 		err = c.Watch(
 			&source.Kind{
-				Type: &dplv1.Deployable{}},
+				Type: &manifestwork.ManifestWork{}},
 			&handler.EnqueueRequestsFromMapFunc{
 				ToRequests: &outputMapper{mgr.GetClient()},
 			},
