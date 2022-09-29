@@ -79,7 +79,7 @@ func (r *ReconcileHybridDeployable) purgeChildren(children map[schema.GroupVersi
 	}
 }
 
-func (r *ReconcileHybridDeployable) deployResourceByDeployers(instance *corev1alpha1.ManifestWork, deployers []*prulev1alpha1.Deployer,
+func (r *ReconcileHybridDeployable) deployResourceByDeployers(instance *corev1alpha1.Deployable, deployers []*prulev1alpha1.Deployer,
 	children map[schema.GroupVersionResource]gvrChildrenMap) error {
 	if instance == nil || instance.Spec.HybridTemplates == nil || deployers == nil {
 		return nil
@@ -115,7 +115,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployers(instance *corev1al
 	return nil
 }
 
-func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alpha1.ManifestWork, deployer *prulev1alpha1.Deployer,
+func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	children map[schema.GroupVersionResource]gvrChildrenMap, template *runtime.RawExtension) error {
 	obj := &unstructured.Unstructured{}
 
@@ -205,7 +205,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 	return nil
 }
 
-func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alpha1.ManifestWork, deployer *prulev1alpha1.Deployer,
+func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	object metav1.Object, templateobj *unstructured.Unstructured) (metav1.Object, error) {
 	var err error
 	// generate deployable
@@ -243,7 +243,7 @@ func (r *ReconcileHybridDeployable) deployObjectForDeployer(instance *corev1alph
 	return object, err
 }
 
-func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alpha1.ManifestWork, deployer *prulev1alpha1.Deployer,
+func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	templateobj *unstructured.Unstructured, object metav1.Object) (metav1.Object, error) {
 	uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
 	if err != nil {
@@ -377,7 +377,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 	return r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(context.TODO(), obj, metav1.UpdateOptions{})
 }
 
-func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alpha1.ManifestWork, deployer *prulev1alpha1.Deployer,
+func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alpha1.Deployable, deployer *prulev1alpha1.Deployer,
 	templateobj *unstructured.Unstructured) (metav1.Object, error) {
 	gvk := templateobj.GetObjectKind().GroupVersionKind()
 
@@ -454,7 +454,7 @@ func (r *ReconcileHybridDeployable) genObjectIdentifier(metaobj metav1.Object) t
 	return id
 }
 
-func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.ManifestWork, object *unstructured.Unstructured) {
+func (r *ReconcileHybridDeployable) prepareUnstructured(instance *corev1alpha1.Deployable, object *unstructured.Unstructured) {
 	labels := object.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
