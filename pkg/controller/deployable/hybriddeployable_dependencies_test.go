@@ -20,7 +20,8 @@ import (
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+
+	manifestwork "github.com/open-cluster-management/api/work/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
@@ -103,10 +104,10 @@ var (
 			},
 		},
 	}
-	svcDeployable = &dplv1.Deployable{
+	svcManifestWork = &manifestwork.ManifestWork{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployable",
-			APIVersion: "apps.open-cluster-management.io/v1",
+			Kind:       "ManifestWork",
+			APIVersion: "work.open-cluster-management.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcServiceName,
@@ -118,16 +119,22 @@ var (
 				appv1alpha1.AnnotationHybridDiscovery: appv1alpha1.HybridDiscoveryEnabled,
 			},
 		},
-		Spec: dplv1.DeployableSpec{
-			Template: &runtime.RawExtension{
-				Object: mcService,
+		Spec: manifestwork.ManifestWorkSpec{
+			Workload: manifestwork.ManifestsTemplate{
+				Manifests: []manifestwork.Manifest{
+					{
+						runtime.RawExtension{
+							Object: mcService,
+						},
+					},
+				},
 			},
 		},
 	}
-	svcDeployable2 = &dplv1.Deployable{
+	svcManifestWork2 = &manifestwork.ManifestWork{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployable",
-			APIVersion: "apps.open-cluster-management.io/v1",
+			Kind:       "ManifestWork",
+			APIVersion: "work.open-cluster-management.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcServiceName + "2",
@@ -139,34 +146,40 @@ var (
 				appv1alpha1.AnnotationHybridDiscovery: appv1alpha1.HybridDiscoveryEnabled,
 			},
 		},
-		Spec: dplv1.DeployableSpec{
-			Template: &runtime.RawExtension{
-				Object: mcService2,
+		Spec: manifestwork.ManifestWorkSpec{
+			Workload: manifestwork.ManifestsTemplate{
+				Manifests: []manifestwork.Manifest{
+					{
+						runtime.RawExtension{
+							Object: mcService2,
+						},
+					},
+				},
 			},
 		},
 	}
-	svcDeployableRef = &corev1.ObjectReference{
+	svcManifestWorkRef = &corev1.ObjectReference{
 		Name:       mcServiceName,
-		Kind:       "Deployable",
-		APIVersion: "apps.open-cluster-management.io/v1",
+		Kind:       "ManifestWork",
+		APIVersion: "work.open-cluster-management.io/v1",
 	}
-	svcDeployableRef2 = &corev1.ObjectReference{
+	svcManifestWorkRef2 = &corev1.ObjectReference{
 		Name:       mcServiceName + "2",
 		Namespace:  fooDeployer.Namespace,
-		Kind:       "Deployable",
-		APIVersion: "apps.open-cluster-management.io/v1",
+		Kind:       "ManifestWork",
+		APIVersion: "work.open-cluster-management.io/v1",
 	}
 
 	templateRHACM = appv1alpha1.HybridTemplate{
 		DeployerType: RHACM,
 		Template: &runtime.RawExtension{
-			Object: svcDeployable,
+			Object: svcManifestWork,
 		},
 	}
 	templateRHACM2 = appv1alpha1.HybridTemplate{
 		DeployerType: RHACM,
 		Template: &runtime.RawExtension{
-			Object: svcDeployable2,
+			Object: svcManifestWork2,
 		},
 	}
 	cm = &corev1.ConfigMap{
@@ -469,7 +482,7 @@ func TestDeployableDependencyRefGVKEqualsDeployableGVK(t *testing.T) {
 	}
 
 	dependentHDPL.Spec.Dependencies = []corev1.ObjectReference{
-		*svcDeployableRef,
+		*svcManifestWorkRef,
 	}
 	g.Expect(c.Create(context.TODO(), dependentHDPL)).To(Succeed())
 	g.Eventually(requests, timeout, interval).Should(Receive())
@@ -503,7 +516,7 @@ func TestDeployableDependencyRefGVKEqualsDeployableGVK(t *testing.T) {
 	}
 
 	dependentHDPL2.Spec.Dependencies = []corev1.ObjectReference{
-		*svcDeployableRef2,
+		*svcManifestWorkRef2,
 	}
 	g.Expect(c.Create(context.TODO(), dependentHDPL2)).To(Succeed())
 	g.Eventually(requests, timeout, interval).Should(Receive())
