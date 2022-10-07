@@ -394,12 +394,20 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	obj := templateobj.DeepCopy()
 	// actual object to be created could be template object or a deployable wrapping template object
 	if !hdplutils.IsInClusterDeployer(deployer) {
-		dpl := &workapiv1.ManifestWork{}
-
 		r.prepareUnstructured(instance, templateobj)
 
-		dpl.Spec.Workload.Manifests[0].RawExtension = runtime.RawExtension{
-			Object: templateobj,
+		dpl := &workapiv1.ManifestWork{
+			Spec: workapiv1.ManifestWorkSpec{
+				Workload: workapiv1.ManifestsTemplate{
+					Manifests: []workapiv1.Manifest{
+						{
+							runtime.RawExtension{
+								Object: templateobj,
+							},
+						},
+					},
+				},
+			},
 		}
 		uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dpl)
 
