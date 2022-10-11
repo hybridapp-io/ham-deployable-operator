@@ -189,14 +189,23 @@ func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1
 			depobj.SetNamespace(templateobj.GetNamespace())
 
 			targetGVR = manifestworkGVR
-			manifestworkobj := &workapiv1.ManifestWork{}
+			manifestworkobj := &workapiv1.ManifestWork{
+				Spec: workapiv1.ManifestWorkSpec{
+					Workload: workapiv1.ManifestsTemplate{
+						Manifests: []workapiv1.Manifest{
+							{
+								runtime.RawExtension{
+									Object: depobj,
+								},
+							},
+						},
+					},
+				},
+			}
 			manifestworkobj.SetGroupVersionKind(manifestworkGVK)
-			manifestworkobj.Spec.Workload.Manifests[0].RawExtension = runtime.RawExtension{}
-			manifestworkobj.Spec.Workload.Manifests[0].Object = depobj
-
 			uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(manifestworkobj)
 			if err != nil {
-				klog.Info("Failed to convert deployable to unstructured with error:", err)
+				klog.Info("Failed to convert manifestwork to unstructured with error:", err)
 				continue
 			}
 

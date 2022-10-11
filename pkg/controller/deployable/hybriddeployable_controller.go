@@ -49,7 +49,7 @@ const (
 var (
 	rhacmEnabled         = false
 	rhacmManifestworkGVK = schema.GroupVersionKind{
-		Group:   "apps.open-cluster-management.io",
+		Group:   "work.open-cluster-management.io",
 		Version: "v1",
 		Kind:    "ManifestWork",
 	}
