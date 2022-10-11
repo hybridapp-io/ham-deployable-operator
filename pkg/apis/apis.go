@@ -19,6 +19,7 @@ import (
 
 	hprlapis "github.com/hybridapp-io/ham-placement/pkg/apis"
 	workapiv1 "github.com/open-cluster-management/api/work/v1"
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
 // AddToSchemes may be used to add all resources defined in the project to a Scheme
@@ -31,6 +32,10 @@ func AddToScheme(s *runtime.Scheme) error {
 		return err
 	}
 	err = hprlapis.AddToScheme(s)
+	if err != nil {
+		return err
+	}
+	err = placementv1.AddToScheme(s)
 	if err != nil {
 		return err
 	}

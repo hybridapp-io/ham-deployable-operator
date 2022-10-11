@@ -194,7 +194,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		// watch on hybrid-discovery annotation of deployables, but only if RHACM is installed
 		err = c.Watch(
 			&source.Kind{
-				Type: &manifestwork.ManifestWorkList{}},
+				Type: &manifestwork.ManifestWork{}},
 			&handler.EnqueueRequestsFromMapFunc{
 				ToRequests: &deployableMapper{mgr.GetClient()},
 			},
