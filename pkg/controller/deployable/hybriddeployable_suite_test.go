@@ -24,8 +24,9 @@ import (
 	apis "github.com/hybridapp-io/ham-deployable-operator/pkg/apis"
 	"github.com/onsi/gomega"
 	managedclusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	manifestworkv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+        manifestworkv1 "github.com/open-cluster-management/api/work/v1"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
@@ -56,10 +57,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		klog.Fatal(err)
 	}
-	err = manifestworkv1.AddToScheme(scheme.Scheme)
-	if err != nil {
-		klog.Fatal(err)
-	}
+        err = manifestworkv1.AddToScheme(scheme.Scheme)
+        if err != nil {
+                klog.Fatal(err)
+        }
 	if cfg, err = t.Start(); err != nil {
 		log.Fatal(err)
 	}
