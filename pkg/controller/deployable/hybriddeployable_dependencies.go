@@ -79,7 +79,7 @@ func (r *ReconcileHybridDeployable) getDependenciesObject(instance *appv1alpha1.
 		return nil
 	}
 
-	if depref.GetObjectKind().GroupVersionKind() == deployableGVK {
+	if depref.GetObjectKind().GroupVersionKind() == manifestworkGVK {
 		manifestworkobj := &workapiv1.ManifestWork{}
 		key := types.NamespacedName{Name: depref.Name, Namespace: depref.Namespace}
 
@@ -188,9 +188,9 @@ func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1
 			// make sure it go to same namespace with template in hybrid deployable spec
 			depobj.SetNamespace(templateobj.GetNamespace())
 
-			targetGVR = deployableGVR
+			targetGVR = manifestworkGVR
 			manifestworkobj := &workapiv1.ManifestWork{}
-			manifestworkobj.SetGroupVersionKind(deployableGVK)
+			manifestworkobj.SetGroupVersionKind(manifestworkGVK)
 			manifestworkobj.Spec.Workload.Manifests[0].RawExtension = runtime.RawExtension{}
 			manifestworkobj.Spec.Workload.Manifests[0].Object = depobj
 

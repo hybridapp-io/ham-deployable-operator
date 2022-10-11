@@ -35,16 +35,16 @@ import (
 )
 
 var (
-	deployableGVR = schema.GroupVersionResource{
-		Group:    "apps.open-cluster-management.io",
+	manifestworkGVR = schema.GroupVersionResource{
+		Group:    "work.open-cluster-management.io",
 		Version:  "v1",
-		Resource: "deployables",
+		Resource: "manifestworks",
 	}
 
-	deployableGVK = schema.GroupVersionKind{
-		Group:   "apps.open-cluster-management.io",
+	manifestworkGVK = schema.GroupVersionKind{
+		Group:   "work.open-cluster-management.io",
 		Version: "v1",
-		Kind:    "Deployable",
+		Kind:    "ManifestWork",
 	}
 
 	hybriddeployableGVK = schema.GroupVersionKind{
@@ -129,7 +129,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 
 	var gvr schema.GroupVersionResource
 	if !hdplutils.IsInClusterDeployer(deployer) {
-		gvr = deployableGVR
+		gvr = manifestworkGVR
 	} else {
 		localgvr, err := r.registerGVK(gvk)
 		if err != nil {
@@ -263,7 +263,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 	}
 
 	// handle the deployable if not controlled by discovery (remote reconciler)
-	if gvr == deployableGVR {
+	if gvr == manifestworkGVR {
 		if !r.isDiscoveryEnabled(obj) {
 			if r.isDiscoveryCompleted(obj) {
 				// assume ownership of the deployable
@@ -416,10 +416,10 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 			return nil, err
 		}
 
-		gvr = deployableGVR
+		gvr = manifestworkGVR
 
 		obj.SetUnstructuredContent(uc)
-		obj.SetGroupVersionKind(deployableGVK)
+		obj.SetGroupVersionKind(manifestworkGVK)
 	}
 
 	if obj.GetName() == "" {
