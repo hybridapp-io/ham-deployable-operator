@@ -65,7 +65,7 @@ func (r *hybridDeployableRegistry) initRegistry(config *rest.Config) error {
 	r.discoverActiveGVRs()
 
 	// add deployable by default
-	r.activeGVRMap[deployableGVR] = deployableGVK
+	r.activeGVRMap[manifestworkGVR] = manifestworkGVK
 
 	klog.V(packageInfoLogLevel).Info("Initial active GVRs:", r.activeGVRMap)
 

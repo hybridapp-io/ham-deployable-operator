@@ -114,7 +114,7 @@ func (r *ReconcileHybridDeployable) updatePerDeployerStatus(instance *corev1alph
 
 		for _, dpl := range manifestworklist.Items {
 			ref := corev1.ObjectReference{}
-			ref.SetGroupVersionKind(deployableGVK)
+			ref.SetGroupVersionKind(manifestworkGVK)
 			ref.Namespace = dpl.Namespace
 			ref.Name = dpl.Name
 			dplystatus.Outputs = append(dplystatus.Outputs, ref)
