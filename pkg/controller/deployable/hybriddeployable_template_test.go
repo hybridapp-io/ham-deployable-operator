@@ -23,7 +23,7 @@ import (
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	manifestwork "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -382,9 +382,9 @@ func TestUpdateDeployableChild(t *testing.T) {
 	keylabel := map[string]string{
 		appv1alpha1.HostingHybridDeployable: instance.Name,
 	}
-	dpls := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	g.Expect(dpls.Items).To(HaveLen(oneitem))
+	mws := &manifestwork.ManifestWorkList{}
+	g.Expect(c.List(context.TODO(), mws, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	g.Expect(mws.Items).To(HaveLen(oneitem))
 
 	//status update reconciliation
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
@@ -399,10 +399,10 @@ func TestUpdateDeployableChild(t *testing.T) {
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
 	uc := &unstructured.Unstructured{}
-	updatedDpls := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), updatedDpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	updatedMws := &manifestwork.ManifestWorkList{}
+	g.Expect(c.List(context.TODO(), updatedMws, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
 
-	json.Unmarshal(updatedDpls.Items[0].Spec.Template.Raw, uc)
+	json.Unmarshal(updatedMws.Items[0].Spec.Workload.Manifests[0].Raw, uc)
 	payload, _, _ := unstructured.NestedMap(uc.Object, "data")
 	g.Expect(payload["myconfig"].(string)).To(Equal(payloadBar.Data["myconfig"]))
 }
@@ -497,12 +497,12 @@ func TestUpdateTemplateNamespace(t *testing.T) {
 	keylabel := map[string]string{
 		appv1alpha1.HostingHybridDeployable: instance.Name,
 	}
-	dpls := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	g.Expect(dpls.Items).To(HaveLen(oneitem))
+	mws := &manifestwork.ManifestWorkList{}
+	g.Expect(c.List(context.TODO(), mws, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	g.Expect(mws.Items).To(HaveLen(oneitem))
 
 	uc := &unstructured.Unstructured{}
-	json.Unmarshal(dpls.Items[0].Spec.Template.Raw, uc)
+	json.Unmarshal(mws.Items[0].Spec.Workload.Manifests[0].Raw, uc)
 	g.Expect(uc.GetNamespace()).To(Equal(instance.Namespace))
 
 	//status update reconciliation
@@ -515,8 +515,8 @@ func TestUpdateTemplateNamespace(t *testing.T) {
 	g.Expect(c.Update(context.TODO(), instance)).To(Succeed())
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
-	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	json.Unmarshal(dpls.Items[0].Spec.Template.Raw, uc)
+	g.Expect(c.List(context.TODO(), mws, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	json.Unmarshal(mws.Items[0].Spec.Workload.Manifests[0].Raw, uc)
 	g.Expect(uc.GetNamespace()).To(Equal(payloadFoo.Namespace))
 }
 
@@ -624,20 +624,26 @@ func TestUpdateDiscoveryCompleted(t *testing.T) {
 		appv1alpha1.HostingHybridDeployable: instance.Namespace + "/" + instance.Name,
 	}
 
-	dpls := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	g.Expect(dpls.Items).To(HaveLen(oneitem))
+	mws := &manifestwork.ManifestWorkList{}
+	g.Expect(c.List(context.TODO(), mws, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
+	g.Expect(mws.Items).To(HaveLen(oneitem))
 
-	dpl := dpls.Items[0]
-	annotations := dpl.GetAnnotations()
+	mw := mws.Items[0]
+	annotations := mw.GetAnnotations()
 	annotations[appv1alpha1.AnnotationHybridDiscovery] = appv1alpha1.HybridDiscoveryCompleted
-	dpl.SetAnnotations(annotations)
-	dpl.Spec = dplv1.DeployableSpec{
-		Template: &runtime.RawExtension{
-			Object: payloadFoo,
+	mw.SetAnnotations(annotations)
+	mw.Spec = manifestwork.ManifestWorkSpec{
+		Workload: manifestwork.ManifestsTemplate{
+			Manifests: []manifestwork.Manifest{
+				{
+					runtime.RawExtension{
+						Object: payloadFoo,
+					},
+				},
+			},
 		},
 	}
-	g.Expect(c.Update(context.TODO(), &dpl)).To(Succeed())
+	g.Expect(c.Update(context.TODO(), &mw)).To(Succeed())
 
 	// expect hdpl reconciliation to happen
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))

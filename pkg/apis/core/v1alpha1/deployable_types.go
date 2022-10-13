@@ -18,8 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -97,9 +95,19 @@ type DeployableSpec struct {
 	Dependencies    []corev1.ObjectReference `json:"dependencies,omitempty"`
 }
 
+// ResourceUnitStatus aggregates status from target clusters
+type ResourceUnitStatus struct {
+	Phase          string       `json:"phase"`
+	Reason         string       `json:"reason,omitempty"`
+	Message        string       `json:"message,omitempty"`
+	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
+
+	ResourceStatus *runtime.RawExtension `json:"resourceStatus,omitempty"`
+}
 type PerDeployerStatus struct {
-	dplv1.ResourceUnitStatus `json:",inline"`
-	Outputs                  []corev1.ObjectReference `json:"outputs,omitempty"`
+	// dplv1.ResourceUnitStatus `json:",inline"`
+	ResourceUnitStatus `json:",inline"`
+	Outputs            []corev1.ObjectReference `json:"outputs,omitempty"`
 }
 
 // HybridDeployableStatus defines the observed state of HybridDeployable

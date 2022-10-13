@@ -31,20 +31,20 @@ import (
 
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	workapiv1 "github.com/open-cluster-management/api/work/v1"
 )
 
 var (
-	deployableGVR = schema.GroupVersionResource{
-		Group:    "apps.open-cluster-management.io",
+	manifestworkGVR = schema.GroupVersionResource{
+		Group:    "work.open-cluster-management.io",
 		Version:  "v1",
-		Resource: "deployables",
+		Resource: "manifestworks",
 	}
 
-	deployableGVK = schema.GroupVersionKind{
-		Group:   "apps.open-cluster-management.io",
+	manifestworkGVK = schema.GroupVersionKind{
+		Group:   "work.open-cluster-management.io",
 		Version: "v1",
-		Kind:    "Deployable",
+		Kind:    "ManifestWork",
 	}
 
 	hybriddeployableGVK = schema.GroupVersionKind{
@@ -129,7 +129,7 @@ func (r *ReconcileHybridDeployable) deployResourceByDeployer(instance *corev1alp
 
 	var gvr schema.GroupVersionResource
 	if !hdplutils.IsInClusterDeployer(deployer) {
-		gvr = deployableGVR
+		gvr = manifestworkGVR
 	} else {
 		localgvr, err := r.registerGVK(gvk)
 		if err != nil {
@@ -263,7 +263,7 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 	}
 
 	// handle the deployable if not controlled by discovery (remote reconciler)
-	if gvr == deployableGVR {
+	if gvr == manifestworkGVR {
 		if !r.isDiscoveryEnabled(obj) {
 			if r.isDiscoveryCompleted(obj) {
 				// assume ownership of the deployable
@@ -278,19 +278,30 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 
 				for index, hybridTemplate := range instance.Spec.HybridTemplates {
 					if hybridTemplate.DeployerType == deployer.Spec.Type {
-						if dplTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
-							uc := &unstructured.Unstructured{}
-							uc.SetUnstructuredContent(dplTemplate)
 
-							hybridTemplate.Template = &runtime.RawExtension{
-								Object: uc,
-							}
-							instance.Spec.HybridTemplates[index] = *hybridTemplate.DeepCopy()
+						manifests, _, err := unstructured.NestedSlice(obj.Object, "spec", "workload", "manifests")
+						if err != nil {
+							klog.Error("Cannot get the wrapped object kind for manifestwork ", object.GetNamespace()+"/"+object.GetName())
+							return nil, err
 						}
 
-						//update the deployable
+						manifest, ok := manifests[0].(map[string]interface{})
+						if !ok {
+							klog.Error("Cannot get manifest from manifestwork ", object.GetNamespace()+"/"+object.GetName())
+							return nil, err
+						}
+
+						uc := &unstructured.Unstructured{}
+						uc.SetUnstructuredContent(manifest)
+
+						hybridTemplate.Template = &runtime.RawExtension{
+							Object: uc,
+						}
+						instance.Spec.HybridTemplates[index] = *hybridTemplate.DeepCopy()
+
+						//update the manifest
 						if obj, err = r.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Update(context.TODO(), obj, metav1.UpdateOptions{}); err != nil {
-							klog.Error("Failed to update deployable ", object.GetNamespace()+"/"+object.GetName())
+							klog.Error("Failed to update manifest ", object.GetNamespace()+"/"+object.GetName())
 							return nil, err
 						}
 
@@ -308,19 +319,27 @@ func (r *ReconcileHybridDeployable) updateObjectForDeployer(instance *corev1alph
 						return obj, nil
 					}
 				}
-			} else if currentTemplate, _, err := unstructured.NestedMap(obj.Object, "spec", "template"); err == nil {
+			} else if currentManifests, _, err := unstructured.NestedSlice(obj.Object, "spec", "workload", "manifests"); err == nil {
+
+				manifest, ok := currentManifests[0].(map[string]interface{})
+				if !ok {
+					klog.Error("Cannot get manifest from manifestwork ", object.GetNamespace()+"/"+object.GetName())
+					return nil, err
+				}
+
 				if templateobj.GetNamespace() == "" {
 					templateobj.SetNamespace(instance.Namespace)
 				}
 
-				if reflect.DeepEqual(currentTemplate, templateobj.Object) {
+				if reflect.DeepEqual(manifest, templateobj.Object) {
 					return object, nil
 				}
-				if err = unstructured.SetNestedMap(obj.Object, templateobj.Object, "spec", "template"); err != nil {
+				currentManifests[0] = templateobj.Object
+				if err = unstructured.SetNestedSlice(obj.Object, currentManifests, "spec", "workload", "manifests"); err != nil {
 					klog.Error("Failed to update object ", obj.GetNamespace()+"/"+obj.GetName(), " with error: ", err)
 					return object, err
 				}
-				klog.V(packageInfoLogLevel).Info("Successfully updated the spec template for deployable ", obj.GetNamespace()+"/"+obj.GetName())
+				klog.V(packageInfoLogLevel).Info("Successfully updated the spec workload manifests for manifestwork ", obj.GetNamespace()+"/"+obj.GetName())
 			}
 		}
 	} else {
@@ -394,12 +413,20 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 	obj := templateobj.DeepCopy()
 	// actual object to be created could be template object or a deployable wrapping template object
 	if !hdplutils.IsInClusterDeployer(deployer) {
-		dpl := &dplv1.Deployable{}
-
 		r.prepareUnstructured(instance, templateobj)
 
-		dpl.Spec.Template = &runtime.RawExtension{
-			Object: templateobj,
+		dpl := &workapiv1.ManifestWork{
+			Spec: workapiv1.ManifestWorkSpec{
+				Workload: workapiv1.ManifestsTemplate{
+					Manifests: []workapiv1.Manifest{
+						{
+							runtime.RawExtension{
+								Object: templateobj,
+							},
+						},
+					},
+				},
+			},
 		}
 		uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dpl)
 
@@ -408,10 +435,10 @@ func (r *ReconcileHybridDeployable) createObjectForDeployer(instance *corev1alph
 			return nil, err
 		}
 
-		gvr = deployableGVR
+		gvr = manifestworkGVR
 
 		obj.SetUnstructuredContent(uc)
-		obj.SetGroupVersionKind(deployableGVK)
+		obj.SetGroupVersionKind(manifestworkGVK)
 	}
 
 	if obj.GetName() == "" {

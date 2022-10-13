@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	workapiv1 "github.com/open-cluster-management/api/work/v1"
 
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	hdplutils "github.com/hybridapp-io/ham-deployable-operator/pkg/utils"
@@ -79,24 +79,24 @@ func (r *ReconcileHybridDeployable) getDependenciesObject(instance *appv1alpha1.
 		return nil
 	}
 
-	if depref.GetObjectKind().GroupVersionKind() == deployableGVK {
-		dplobj := &dplv1.Deployable{}
+	if depref.GetObjectKind().GroupVersionKind() == manifestworkGVK {
+		manifestworkobj := &workapiv1.ManifestWork{}
 		key := types.NamespacedName{Name: depref.Name, Namespace: depref.Namespace}
 
-		err = r.Get(context.TODO(), key, dplobj)
+		err = r.Get(context.TODO(), key, manifestworkobj)
 		if err != nil {
 			klog.Info("Failed to obtain deployable dependency with error:", err)
 			return nil
 		}
 
-		if dplobj.Spec.Template == nil {
+		if manifestworkobj.Spec.Workload.Manifests == nil {
 			return nil
 		}
 
 		depobj = &unstructured.Unstructured{}
 
-		if dplobj.Spec.Template.Object != nil {
-			uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dplobj.Spec.Template.Object)
+		if manifestworkobj.Spec.Workload.Manifests != nil {
+			uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(manifestworkobj.Spec.Workload.Manifests[0])
 			if err != nil {
 				klog.Info("Failed to convert deployable template object with error:", err)
 				return nil
@@ -104,9 +104,9 @@ func (r *ReconcileHybridDeployable) getDependenciesObject(instance *appv1alpha1.
 
 			depobj.SetUnstructuredContent(uc)
 		} else {
-			err = json.Unmarshal(dplobj.Spec.Template.Raw, depobj)
+			err = json.Unmarshal(manifestworkobj.Spec.Workload.Manifests[0].Raw, depobj)
 			if err != nil {
-				klog.Info("Failed to unmashal object:\n", string(dplobj.Spec.Template.Raw))
+				klog.Info("Failed to unmashal object:\n", string(manifestworkobj.Spec.Workload.Manifests[0].Raw))
 				return nil
 			}
 		}
@@ -188,15 +188,24 @@ func (r *ReconcileHybridDeployable) deployDependenciesByDeployer(instance *appv1
 			// make sure it go to same namespace with template in hybrid deployable spec
 			depobj.SetNamespace(templateobj.GetNamespace())
 
-			targetGVR = deployableGVR
-			dplobj := &dplv1.Deployable{}
-			dplobj.SetGroupVersionKind(deployableGVK)
-			dplobj.Spec.Template = &runtime.RawExtension{}
-			dplobj.Spec.Template.Object = depobj
-
-			uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dplobj)
+			targetGVR = manifestworkGVR
+			manifestworkobj := &workapiv1.ManifestWork{
+				Spec: workapiv1.ManifestWorkSpec{
+					Workload: workapiv1.ManifestsTemplate{
+						Manifests: []workapiv1.Manifest{
+							{
+								runtime.RawExtension{
+									Object: depobj,
+								},
+							},
+						},
+					},
+				},
+			}
+			manifestworkobj.SetGroupVersionKind(manifestworkGVK)
+			uc, err := runtime.DefaultUnstructuredConverter.ToUnstructured(manifestworkobj)
 			if err != nil {
-				klog.Info("Failed to convert deployable to unstructured with error:", err)
+				klog.Info("Failed to convert manifestwork to unstructured with error:", err)
 				continue
 			}
 

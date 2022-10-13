@@ -21,13 +21,11 @@ import (
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
 	. "github.com/onsi/gomega"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	workapiv1 "github.com/open-cluster-management/api/work/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -134,20 +132,26 @@ var (
 		},
 	}
 
-	dplName      = "output-deployable"
-	dplNamespace = clusterName
-	dpl1         = &dplv1.Deployable{
+	mwName      = "output-manifestwork"
+	mwNamespace = clusterName
+	mw1         = &workapiv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      dplName,
-			Namespace: dplNamespace,
+			Name:      mwName,
+			Namespace: mwNamespace,
 			Annotations: map[string]string{
 				appv1alpha1.AnnotationHybridDiscovery: "true",
 				appv1alpha1.HostingHybridDeployable:   hdplNamespace + "/" + hdplName,
 			},
 		},
-		Spec: dplv1.DeployableSpec{
-			Template: &runtime.RawExtension{
-				Object: payloadConfigMap,
+		Spec: workapiv1.ManifestWorkSpec{
+			Workload: workapiv1.ManifestsTemplate{
+				Manifests: []workapiv1.Manifest{
+					{
+						runtime.RawExtension{
+							Object: payloadConfigMap,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -399,12 +403,12 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 	}
 	g.Expect(c.Status().Update(context.TODO(), hpr)).NotTo(HaveOccurred())
 
-	// deployable
-	dpl := dpl1.DeepCopy()
-	g.Expect(c.Create(context.TODO(), dpl)).To(Succeed())
+	// manifestwork
+	mw := mw1.DeepCopy()
+	g.Expect(c.Create(context.TODO(), mw)).To(Succeed())
 
 	defer func() {
-		if err = c.Delete(context.TODO(), dpl); err != nil {
+		if err = c.Delete(context.TODO(), mw); err != nil {
 			klog.Error(err)
 			t.Fail()
 		}
@@ -440,132 +444,4 @@ func TestDeployableWithChildrenStatus(t *testing.T) {
 	g.Expect(c.Get(context.TODO(), hdplKey, hdpl1)).NotTo(HaveOccurred())
 
 	g.Expect(hdpl1.Status.PerDeployerStatus).ToNot(BeEmpty())
-}
-
-func TestDeployableStatusPropagation(t *testing.T) {
-	g := NewWithT(t)
-
-	payloadIncomplete := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "ConfigMap",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "payload",
-			Namespace: "payload",
-		},
-	}
-	templateInHybridDeployable := appv1alpha1.HybridTemplate{
-		DeployerType: appv1alpha1.DefaultDeployerType,
-		Template: &runtime.RawExtension{
-			Object: payloadIncomplete,
-		},
-	}
-
-	hybridDeployable.Spec = appv1alpha1.DeployableSpec{
-		HybridTemplates: []appv1alpha1.HybridTemplate{
-			templateInHybridDeployable,
-		},
-		Placement: &appv1alpha1.HybridPlacement{
-			PlacementRef: &corev1.ObjectReference{
-				Name:      placementRuleName,
-				Namespace: placementRuleNamespace,
-			},
-		},
-	}
-
-	var c client.Client
-
-	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-	// channel when it is finished.
-	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
-	g.Expect(err).NotTo(HaveOccurred())
-
-	c = mgr.GetClient()
-
-	rec := newReconciler(mgr)
-	recFn, requests, _ := SetupTestReconcile(rec)
-
-	g.Expect(add(mgr, recFn)).To(Succeed())
-
-	stopMgr, mgrStopped := StartTestManager(mgr, g)
-
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
-
-	prule := placementRule.DeepCopy()
-	g.Expect(c.Create(context.TODO(), prule)).To(Succeed())
-
-	defer c.Delete(context.TODO(), prule)
-
-	clstr := cluster.DeepCopy()
-	g.Expect(c.Create(context.TODO(), clstr)).To(Succeed())
-
-	defer c.Delete(context.TODO(), clstr)
-
-	//Pull back the placementrule and update the status subresource
-	pr := &placementv1.PlacementRule{}
-	g.Expect(c.Get(context.TODO(), placementRuleKey, pr)).To(Succeed())
-
-	decisionInPlacement := placementv1.PlacementDecision{
-		ClusterName: clusterName,
-	}
-
-	newpd := []placementv1.PlacementDecision{
-		decisionInPlacement,
-	}
-	pr.Status.Decisions = newpd
-	g.Expect(c.Status().Update(context.TODO(), pr.DeepCopy())).To(Succeed())
-
-	defer c.Delete(context.TODO(), pr)
-
-	instance := hybridDeployable.DeepCopy()
-	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
-
-	defer c.Delete(context.TODO(), instance)
-	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
-
-	//status update reconciliation
-	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
-
-	// connect the deployable with a payload and set its discovery annotation to enabled
-	keylabel := map[string]string{
-		appv1alpha1.HostingHybridDeployable: instance.Namespace + "/" + instance.Name,
-	}
-
-	// Fetch deployables
-	dpls := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	g.Expect(dpls.Items).To(HaveLen(oneitem))
-
-	dpl := dpls.Items[0]
-
-	// Set status to failed & set a reason
-	dpl.Status.Phase = "Failed"
-	dpl.Status.Reason = "TestReason"
-
-	// Update deployable status
-
-	g.Expect(c.Status().Update(context.TODO(), &dpl)).To(Succeed())
-
-	// expect hdpl reconciliation to happen
-	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
-
-	// Fetch deployable again and ensure status has been updated
-	dpls = &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), dpls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(keylabel)})).To(Succeed())
-	g.Expect(dpls.Items).To(HaveLen(oneitem))
-	dpl = dpls.Items[0]
-	g.Expect(string(dpl.Status.ResourceUnitStatus.Phase)).To(Equal("Failed"))
-	g.Expect(dpl.Status.ResourceUnitStatus.Reason).To(Equal("TestReason"))
-
-	// Fetch hybrid deployable
-	c.Get(context.TODO(), types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, instance)
-	// Status should be updated on hybrid deployable
-	g.Expect((instance.Status.PerDeployerStatus[deployerName+"/"+deployerNamespace].ResourceUnitStatus.Phase)).ToNot(BeNil())
-	g.Expect(len(instance.Status.PerDeployerStatus)).ToNot(Equal(0))
-	g.Expect(string(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Phase)).To(Equal("Failed"))
-	g.Expect(instance.Status.PerDeployerStatus[deployerNamespace+"/"+deployerNamespace].ResourceUnitStatus.Reason).To(Equal("TestReason"))
 }

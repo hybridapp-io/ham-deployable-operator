@@ -35,7 +35,7 @@ import (
 	appv1alpha1 "github.com/hybridapp-io/ham-deployable-operator/pkg/apis/core/v1alpha1"
 
 	prulev1alpha1 "github.com/hybridapp-io/ham-placement/pkg/apis/core/v1alpha1"
-	dplv1 "github.com/open-cluster-management/multicloud-operators-deployable/pkg/apis/apps/v1"
+	manifestwork "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
@@ -448,33 +448,33 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 		}
 	}()
 
-	//Expect deployable is created on hybriddeployable create
+	//Expect manifestwork is created on hybriddeployable create
 	instance := hybridDeployable.DeepCopy()
 	g.Expect(c.Create(context.TODO(), instance)).To(Succeed())
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
-	deployableList := &dplv1.DeployableList{}
-	g.Expect(c.List(context.TODO(), deployableList, client.InNamespace(deployerNamespace))).To(Succeed())
-	g.Expect(deployableList.Items).To(HaveLen(oneitem))
-	g.Expect(deployableList.Items[0].GetGenerateName()).To(ContainSubstring("configmap-" + payloadFoo.Namespace + "-" + payloadFoo.Name + "-"))
+	mwList := &manifestwork.ManifestWorkList{}
+	g.Expect(c.List(context.TODO(), mwList, client.InNamespace(deployerNamespace))).To(Succeed())
+	g.Expect(mwList.Items).To(HaveLen(oneitem))
+	g.Expect(mwList.Items[0].GetGenerateName()).To(ContainSubstring("configmap-" + payloadFoo.Namespace + "-" + payloadFoo.Name + "-"))
 
 	//status update reconciliation
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
-	//Expect deployble is updated on hybriddeployable template update
+	//Expect manifestwork is updated on hybriddeployable template update
 	instance = &appv1alpha1.Deployable{}
 	g.Expect(c.Get(context.TODO(), hybridDeployableKey, instance)).To(Succeed())
 	instance.Spec.HybridTemplates[0].Template = &runtime.RawExtension{Object: payloadBar}
 	g.Expect(c.Update(context.TODO(), instance)).To(Succeed())
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
 
-	deployableKey := types.NamespacedName{
-		Name:      deployableList.Items[0].Name,
-		Namespace: deployableList.Items[0].Namespace,
+	manifestworkKey := types.NamespacedName{
+		Name:      mwList.Items[0].Name,
+		Namespace: mwList.Items[0].Namespace,
 	}
-	dpl := &dplv1.Deployable{}
-	g.Expect(c.Get(context.TODO(), deployableKey, dpl)).To(Succeed())
+	mw := &manifestwork.ManifestWork{}
+	g.Expect(c.Get(context.TODO(), manifestworkKey, mw)).To(Succeed())
 
-	tpl := dpl.Spec.Template
+	tpl := mw.Spec.Workload.Manifests[0]
 	codecs := serializer.NewCodecFactory(mgr.GetScheme())
 	tplobj, _, err := codecs.UniversalDeserializer().Decode(tpl.Raw, nil, nil)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -482,12 +482,12 @@ func TestReconcileWithPlacementRule(t *testing.T) {
 	namespacedPayloadBar.Namespace = instance.Namespace
 	g.Expect(tplobj).To(Equal(namespacedPayloadBar))
 
-	//Expect deployable ro be removed on hybriddeployable delete
+	//Expect manifestwork to be removed on hybriddeployable delete
 	if err = c.Delete(context.TODO(), instance); err != nil {
 		klog.Error(err)
 		t.Fail()
 	}
 
 	g.Eventually(requests, timeout, interval).Should(Receive(Equal(expectedRequest)))
-	g.Expect(c.Get(context.TODO(), deployableKey, dpl)).NotTo(Succeed())
+	g.Expect(c.Get(context.TODO(), manifestworkKey, mw)).NotTo(Succeed())
 }
