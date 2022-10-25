@@ -1,6 +1,6 @@
 module github.com/hybridapp-io/ham-deployable-operator
 
-go 1.17
+go 1.19
 
 require (
 	github.com/hybridapp-io/ham-placement v0.0.0-20210225195735-3057d58bb101
