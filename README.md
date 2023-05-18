@@ -11,17 +11,18 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [What is the Deployable Operator](#what-is-the-deployable-operator)
-- [Community, discussion, contribution, and support](#community-discussion-contribution-and-support)
-- [Getting Started](#getting-started)
+- [Deployable Operator](#deployable-operator)
+  - [What is the Deployable Operator](#what-is-the-deployable-operator)
+  - [Community, discussion, contribution, and support](#community-discussion-contribution-and-support)
+  - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Quick Start](#quick-start)
-        - [Clone Deployable Operator Repository](#clone-hybriddeployable-operator-repository)
-        - [Build Deployable Operator](#build-hybriddeployable-operator)
-        - [Install Deployable Operator](#install-hybriddeployable-operator)
-        - [Uninstall Deployable Operator](#uninstall-hybriddeployable-operator)
+      - [Clone Deployable Operator Repository](#clone-deployable-operator-repository)
+      - [Build Deployable Operator](#build-deployable-operator)
+      - [Install Deployable Operator](#install-deployable-operator)
+      - [Uninstall Deployable Operator](#uninstall-deployable-operator)
     - [Troubleshooting](#troubleshooting)
-- [References](#references)
+  - [References](#references)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -97,7 +98,7 @@ $ kubectl create -f kubectl apply -f examples/simple/simple_deployable_cr.yaml
 eployable.core.hybridapp.io/example-deployable created
 $kubectl get hdpl
 NAME                 AGE
-example-deployable   17s
+example-deployable   16s
 ```
 
 #### Uninstall Deployable Operator
