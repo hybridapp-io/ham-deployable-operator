@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6
 
-LABEL   name="quay.io/hybridappio/ham-deployable-operator" \
+LABEL   name="quay.io/cicdtest/ham-deployable-operator" \
         summary="Hybrid Application Model - Deployable Operator" \
         description="Handles deployable components running on non-kubernetes platform(s)."
 
