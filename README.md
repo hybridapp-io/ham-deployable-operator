@@ -98,7 +98,7 @@ $ kubectl create -f kubectl apply -f examples/simple/simple_deployable_cr.yaml
 eployable.core.hybridapp.io/example-deployable created
 $kubectl get hdpl
 NAME                 AGE
-example-deployable   16s
+example-deployable   17s
 ```
 
 #### Uninstall Deployable Operator
