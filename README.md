@@ -5,7 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/hybridapp-io/ham-deployable-operator)](https://goreportcard.com/report/github.com/hybridapp-io/ham-deployable-operator)
 [![Code Coverage](https://codecov.io/gh/hybridapp-io/ham-deployable-operator/branch/master/graphs/badge.svg?branch=master)](https://codecov.io/gh/hybridapp-io/ham-deployable-operator?branch=master)
 [![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
-[![Docker Repository on Quay](https://quay.io/repository/hybridappio/ham-deployable-operator/status "Docker Repository on Quay")](https://quay.io/repository/hybridappio/ham-deployable-operator)
+[![Docker Repository on Quay](https://quay.io/repository/cicdtest/ham-deployable-operator/status "Docker Repository on Quay")](https://quay.io/repository/cicdtest/ham-deployable-operator)
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
