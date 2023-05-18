@@ -1,6 +1,6 @@
 # Deployable Operator
 
-[![Build](http://prow.purple-chesterfield.com/badge.svg?jobs=multiarch-image-ham-deployable-operator-postsubmit)](http://prow.purple-chesterfield.com/?job=multiarch-image-ham-deployable-operator-postsubmit)
+[![Build](http://prow.yellow-chesterfield.com/badge.svg?jobs=multiarch-image-ham-deployable-operator-postsubmit)](http://prow.yellow-chesterfield.com/?job=multiarch-image-ham-deployable-operator-postsubmit)
 [![GoDoc](https://godoc.org/github.com/hybridapp-io/ham-deployable-operator?status.svg)](https://godoc.org/github.com/hybridapp-io/ham-deployable-operator)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hybridapp-io/ham-deployable-operator)](https://goreportcard.com/report/github.com/hybridapp-io/ham-deployable-operator)
 [![Code Coverage](https://codecov.io/gh/hybridapp-io/ham-deployable-operator/branch/master/graphs/badge.svg?branch=master)](https://codecov.io/gh/hybridapp-io/ham-deployable-operator?branch=master)
